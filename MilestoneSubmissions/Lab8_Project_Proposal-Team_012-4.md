@@ -1,4 +1,4 @@
-# Pickup-Finder: Lab 8 Project Proposal
+# Pickup-Finder: Lab 8 Project Proposal - Team 012-4
 
 ## 1. Team Information
 
