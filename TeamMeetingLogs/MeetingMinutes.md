@@ -1,0 +1,1 @@
+First Meeting: Discussed progress on wireframe and potential risks of firebase database, and future workload split.
