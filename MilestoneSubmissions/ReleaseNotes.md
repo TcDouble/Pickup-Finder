@@ -8,7 +8,7 @@ Last edited: `<j01001000>`
 
 - `<feature>` (#`<PR number>`, `<github-username>`)
 - Project board and epics were set up on Github.
-- Paul got the login and register page working with Firebase. '<miner5758>'
+- Login and register page was set up with Firebase. `<miner5758>`, `julianrayon-collab`
 
 ### Changed
 
