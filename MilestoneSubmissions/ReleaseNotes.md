@@ -21,10 +21,10 @@ Last edited: `<j01001000>`
 ### Planned for next week
 
 The checklist issue on the project board:
-- `<https://github.com/TcDouble/Pickup-Finder/issues/9>`
-- `<https://github.com/TcDouble/Pickup-Finder/issues/10>`
-- `https://github.com/TcDouble/Pickup-Finder/issues/4`
-- `https://github.com/TcDouble/Pickup-Finder/issues/5`
+- Add 2 User Stories (Individual Task) `<https://github.com/TcDouble/Pickup-Finder/issues/9>`
+- Lab 9 Extra Credit `<https://github.com/TcDouble/Pickup-Finder/issues/10>`
+- Login and Register Page `https://github.com/TcDouble/Pickup-Finder/issues/4`
+- User Database `https://github.com/TcDouble/Pickup-Finder/issues/5`
 
 ---
 
