@@ -1,605 +1,254 @@
 # Pickup-Finder Database
 
 **Owner:** Jun
-**Engine:** PostgreSQL 16
-**Status:** Draft. The repo doesn't have any database files yet, so the folder layout, schema, and Docker setup below are a **proposal** for the team to review. Once `database/init/create.sql` exists, that file is the source of truth and this README should be kept in sync with it.
-
-The step-by-step plan for building the database lives in [PLAN.md](PLAN.md).
+**Back end:** Firebase (Authentication and Cloud Firestore)
+**Status:** The `events` collection, its security rules, and its tests are built ([`firebase/`](firebase/)). The rules and indexes haven't been deployed to the live project yet.
 
 **Extra credit:** the [Risks](#risks) section at the end of this file is our submission for extra credit.
 
 ## Contents
 
 - [Overview](#overview)
-- [Folder layout](#folder-layout-proposed)
-- [Setup](#setup)
-- [Connecting](#connecting)
-- [Schema](#schema-proposed)
-- [How the schema covers the requirements](#how-the-schema-covers-the-requirements)
-- [Query patterns](#query-patterns)
-- [Changing the schema](#changing-the-schema)
-- [Seed data](#seed-data)
+- [Folder layout](#folder-layout)
+- [Collections](#collections)
+- [Working with the database](#working-with-the-database)
+- [How Firebase covers the requirements](#how-firebase-covers-the-requirements)
 - [Conventions](#conventions)
 - [Risks](#risks)
 
 ## Overview
 
-Pickup-Finder lets people post and join local pickup games. The database stores:
+Pickup-Finder lets people post and join local pickup games. We use Firebase as the back end, and the pages talk to it directly, so there's no server of our own:
 
-- **Accounts:** users, their hashed passwords, and their profiles.
-- **Games:** events, the sport being played, where it is (with map coordinates), and who has joined.
-- **Notifications:** messages like "someone joined your game" or "this game was cancelled".
-- **Login sessions:** so users stay logged in across page loads and server restarts.
+- **Firebase Authentication** handles accounts, passwords, and staying logged in.
+- **Cloud Firestore** stores profiles (`users`) and games (`events`), including who has RSVPed.
+- **Security rules** ([`firebase/firestore.rules`](firebase/firestore.rules)) decide who can read and change what. Anyone can call Firestore from their browser, so the rules are what actually protect the data.
 
-It assumes the usual CSCI 3308 stack:
+Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN and gets `app`, `auth`, and `db` from [`firebase/firebase-config.js`](firebase/firebase-config.js). Pages that deal with games use the functions in [`firebase/events.js`](firebase/events.js) instead of calling Firestore themselves.
 
-- PostgreSQL runs as the `db` service in Docker Compose and builds its tables from SQL files the first time it starts.
-- The Node/Express server connects with [`pg-promise`](https://github.com/vitaly-t/pg-promise).
-- Login sessions use `express-session` with the [`connect-pg-simple`](https://github.com/voxpelli/node-connect-pg-simple) store, so they're saved in PostgreSQL.
-- The server hashes passwords with `bcrypt` (or `bcryptjs`) before saving them. The database only ever sees the hash.
-- Uploaded images are saved as files, and the database stores their paths.
-
-## Folder layout (proposed)
+## Folder layout
 
 ```text
-.
-├── docker-compose.yml        # defines the db service (and the server)
-├── .env.example              # template for .env, committed
-├── .env                      # real values, NOT committed
-└── database/
-    ├── README.md             # this file
-    ├── PLAN.md               # build plan
-    ├── init/                 # run automatically on the first `docker compose up`
-    │   ├── create.sql        # tables, constraints, indexes
-    │   └── insert.sql        # sample data for development
-    └── migrations/           # numbered schema changes, once there's data to keep
+ProjectSourceCode/
+├── README.md                    # this file
+├── firebase/
+│   ├── firebase-config.js       # shared setup: exports app, auth, db
+│   ├── events.js                # games: create, RSVP, search
+│   ├── firestore.rules          # security rules for every collection
+│   ├── firestore.indexes.json   # indexes the game searches need
+│   ├── firebase.json            # Firebase CLI and emulator settings
+│   ├── package.json             # dev tools for tests and deploying
+│   ├── tests/                   # emulator tests for events.js and the rules
+│   └── README.md                # how the front end uses events.js
+├── login/                       # login and home pages
+└── Prototyping/                 # registration page and wireframe
 ```
 
-PostgreSQL runs the files in `init/` in alphabetical order, so `create.sql` runs before `insert.sql`. If you add more init files, keep that order in mind.
+## Collections
 
-## Setup
+### `users/{uid}`
 
-### With Docker (recommended)
+One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`Prototyping/registration.js`](Prototyping/registration.js)) creates it. Paul and Julian own this collection.
 
-You need Docker Desktop (or Docker Engine with the Compose plugin).
-
-1. Copy the env template and fill in a password:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   ```dotenv
-   # .env.example
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=change_me
-   POSTGRES_DB=pickup_finder
-   POSTGRES_HOST=db
-   POSTGRES_PORT=5432
-   SESSION_SECRET=replace_with_a_long_random_string
-   ```
-
-2. Add the `db` service to `docker-compose.yml`:
-
-   ```yaml
-   services:
-     db:
-       image: postgres:16
-       env_file: .env
-       ports:
-         - "5432:5432"   # only needed to connect from your laptop (psql, pgAdmin, etc.)
-       volumes:
-         - pickup-db-data:/var/lib/postgresql/data
-         - ./database/init:/docker-entrypoint-initdb.d
-       healthcheck:
-         test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-         interval: 5s
-         timeout: 5s
-         retries: 5
-
-     web:
-       # ... server settings, owned by the server teammate ...
-       env_file: .env
-       depends_on:
-         db:
-           condition: service_healthy   # wait until Postgres accepts connections
-
-   volumes:
-     pickup-db-data:
-   ```
-
-3. Start the database:
-
-   ```bash
-   docker compose up -d db
-   ```
-
-   On the first start, Postgres creates the `POSTGRES_USER` account and the `POSTGRES_DB` database, then runs `create.sql` and `insert.sql`. Check that it worked with `docker compose logs db`, which should show a "running /docker-entrypoint-initdb.d/create.sql" line.
-
-4. To wipe the database and rebuild it from the SQL files:
-
-   ```bash
-   docker compose down -v   # -v deletes the data volume, so all local data is lost
-   docker compose up -d db
-   ```
-
-> **Important:** the init scripts and the `POSTGRES_*` variables only take effect when the data volume is empty. If you edit `create.sql` or change the password in `.env`, nothing happens until you run `docker compose down -v`.
-
-If you already have PostgreSQL running on your laptop (from a lab or Homebrew), port 5432 will be taken. Change the mapping to `"5433:5432"` and connect your tools to port 5433. The server container is unaffected and still uses `db:5432`.
-
-### Without Docker (optional)
-
-The class requires the app to run in Docker, so use this only for quick local experiments. On macOS with Homebrew:
-
-```bash
-brew install postgresql@16
-brew services start postgresql@16
-export PATH="$(brew --prefix postgresql@16)/bin:$PATH"
-
-createdb pickup_finder
-psql -d pickup_finder -f database/init/create.sql
-psql -d pickup_finder -f database/init/insert.sql
-```
-
-Then set `POSTGRES_HOST=localhost` in `.env`, and set `POSTGRES_USER` to your macOS username. Homebrew's Postgres uses that account, with no password.
-
-## Connecting
-
-### Environment variables
-
-| Variable | Example | Used by |
+| Field | Type | Notes |
 | --- | --- | --- |
-| `POSTGRES_USER` | `postgres` | The `db` container creates this user on first start. The server logs in as it. |
-| `POSTGRES_PASSWORD` | `change_me` | Same as above. Use a real password outside your laptop. |
-| `POSTGRES_DB` | `pickup_finder` | The `db` container creates this database on first start. The server connects to it. |
-| `POSTGRES_HOST` | `db` | Server only. Use `db` inside Docker Compose and `localhost` outside it. |
-| `POSTGRES_PORT` | `5432` | Server only. |
-| `SESSION_SECRET` | a long random string | Server only. Signs the session cookie. |
+| `displayName` | string | Also saved on the Auth account. |
+| `email` | string | |
+| `city` | string | |
+| `sports` | array | Sport IDs, such as `basketball`. Same list as `SPORTS` in `events.js`. |
+| `createdAt` | timestamp | Set by the server. |
 
-Real values go in `.env`, which must be listed in `.gitignore`. Only `.env.example` is committed.
+Passwords are never stored in Firestore. Firebase Authentication keeps them.
 
-### From the Node server
+Rules for now: signed-in users can read any profile, and you can only create or change your own.
 
-```js
-// db.js
-const pgp = require('pg-promise')();
+### `events/{eventId}`
 
-const db = pgp({
-  host: process.env.POSTGRES_HOST || 'db',
-  port: Number(process.env.POSTGRES_PORT) || 5432,
-  database: process.env.POSTGRES_DB,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-});
+One document per game. The players who RSVPed are in its `participantIds` array, with the host first, so the player count is just the array's length.
 
-module.exports = { db, pgp };
-```
-
-Sessions are stored in the `session` table:
-
-```js
-const session = require('express-session');
-const PgSession = require('connect-pg-simple')(session);
-const { db } = require('./db');
-
-app.use(
-  session({
-    store: new PgSession({ pgPromise: db, tableName: 'session' }),
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }, // stay logged in for 7 days
-  })
-);
-```
-
-### From your terminal
-
-```bash
-docker compose exec db psql -U postgres -d pickup_finder
-```
-
-Handy `psql` commands: `\dt` lists tables, `\d events` describes a table, and `\q` quits.
-
-### From a GUI (pgAdmin, DBeaver, TablePlus, VS Code)
-
-Connect to host `localhost`, port `5432` (or `5433` if you changed the mapping), with the user, password, and database from your `.env`.
-
-## Schema (proposed)
-
-### ER diagram
-
-```mermaid
-erDiagram
-    users ||--o{ events : hosts
-    users ||--o{ event_participants : "signs up as"
-    events ||--o{ event_participants : has
-    sports ||--o{ events : categorizes
-    locations ||--o{ events : "is the site of"
-    users |o--o{ locations : added
-    users ||--o{ notifications : receives
-    events |o--o{ notifications : "is about"
-```
-
-The `session` table isn't linked by a foreign key. Each row's `sess` JSON holds the logged-in user's id.
-
-### Tables
-
-**`users`**: one row per account.
-
-| Column | Type | Rules |
+| Field | Type | Notes |
 | --- | --- | --- |
-| `user_id` | `SERIAL` | primary key |
-| `username` | `VARCHAR(50)` | required, unique |
-| `email` | `VARCHAR(255)` | required, unique, saved in lowercase |
-| `password_hash` | `CHAR(60)` | required. A bcrypt hash is always 60 characters. Never the plain password. |
-| `display_name` | `VARCHAR(100)` | optional |
-| `bio` | `TEXT` | optional |
-| `profile_image_url` | `TEXT` | optional. Path or URL of the uploaded image. |
-| `created_at` | `TIMESTAMPTZ` | defaults to `NOW()` |
-| `updated_at` | `TIMESTAMPTZ` | defaults to `NOW()`, and the server sets it on every update |
+| `sportId` | string | One of `SPORTS` in `events.js`. |
+| `title`, `description` | string | Optional. |
+| `skillLevel` | string | `casual` or `competitive`. |
+| `startTime`, `endTime` | timestamp | |
+| `location` | map | `name`, `address`, `lat`, `lng`. |
+| `playerLimit` | number | Including the host, 2 to 50. |
+| `hostId`, `hostName` | string | |
+| `participantIds` | array | User IDs of everyone going. |
+| `status` | string | `scheduled` or `cancelled`. |
+| `createdAt` | timestamp | |
 
-**`sports`**: the fixed list of sports, such as Basketball or Soccer. A table rather than free text keeps filters and dropdowns consistent, so "basketball" and "Basketball" can't both exist.
+The full rules for each field, the functions for creating games, RSVPing, and searching by sport, time, and location, and the error codes are in [`firebase/README.md`](firebase/README.md).
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `sport_id` | `SERIAL` | primary key |
-| `name` | `VARCHAR(50)` | required, unique |
+## Working with the database
 
-**`locations`**: places where games happen, shown as pins on the map. Many games happen at the same court or field, so it gets its own table.
+You need Node 20 or newer, and Java 21 or newer for the local emulators. Run these from `ProjectSourceCode/firebase/`:
 
-| Column | Type | Rules |
-| --- | --- | --- |
-| `location_id` | `SERIAL` | primary key |
-| `name` | `VARCHAR(100)` | required, for example "North Boulder Park, court 2" |
-| `address` | `VARCHAR(255)` | optional |
-| `latitude` | `NUMERIC(9,6)` | required, between -90 and 90 |
-| `longitude` | `NUMERIC(9,6)` | required, between -180 and 180 |
-| `created_by` | `INT` | references `users`. Set to `NULL` if that user is deleted. |
-| `created_at` | `TIMESTAMPTZ` | defaults to `NOW()` |
-
-**`events`**: one row per pickup game.
-
-| Column | Type | Rules |
-| --- | --- | --- |
-| `event_id` | `SERIAL` | primary key |
-| `host_id` | `INT` | required, references `users`. Deleted along with the host. |
-| `sport_id` | `INT` | required, references `sports` |
-| `location_id` | `INT` | required, references `locations` |
-| `title` | `VARCHAR(100)` | required |
-| `description` | `TEXT` | optional |
-| `starts_at` | `TIMESTAMPTZ` | required |
-| `ends_at` | `TIMESTAMPTZ` | required, must be after `starts_at` |
-| `max_players` | `INT` | optional (`NULL` means no limit), must be greater than 0 |
-| `skill_level` | `VARCHAR(20)` | `any` (default), `beginner`, `intermediate`, or `advanced` |
-| `status` | `VARCHAR(20)` | `scheduled` (default), `cancelled`, or `completed` |
-| `image_url` | `TEXT` | optional. Path or URL of the uploaded image. |
-| `created_at` | `TIMESTAMPTZ` | defaults to `NOW()` |
-| `updated_at` | `TIMESTAMPTZ` | defaults to `NOW()`, and the server sets it on every update |
-
-**`event_participants`**: who has joined which game.
-
-| Column | Type | Rules |
-| --- | --- | --- |
-| `event_id` | `INT` | references `events`. Deleted along with the event. |
-| `user_id` | `INT` | references `users`. Deleted along with the user. |
-| `joined_at` | `TIMESTAMPTZ` | defaults to `NOW()` |
-
-The primary key is (`event_id`, `user_id`), so nobody can join the same game twice. When a game is created, the server also adds the host here, so player counts include the host.
-
-**`notifications`**: messages shown to a user.
-
-| Column | Type | Rules |
-| --- | --- | --- |
-| `notification_id` | `SERIAL` | primary key |
-| `user_id` | `INT` | required. The recipient. References `users`, deleted along with the user. |
-| `event_id` | `INT` | optional, references `events`. Deleted along with the event. |
-| `type` | `VARCHAR(30)` | `player_joined`, `player_left`, `event_updated`, `event_cancelled`, or `event_reminder` |
-| `message` | `TEXT` | required |
-| `is_read` | `BOOLEAN` | defaults to `FALSE` |
-| `created_at` | `TIMESTAMPTZ` | defaults to `NOW()` |
-
-**`session`**: login sessions, used by `connect-pg-simple`. Copy this table into `create.sql` exactly as it appears in `node_modules/connect-pg-simple/table.sql`, and don't rename its columns.
-
-| Column | Type | Rules |
-| --- | --- | --- |
-| `sid` | `VARCHAR` | primary key, the session id |
-| `sess` | `JSON` | session data, such as the logged-in user's id and username |
-| `expire` | `TIMESTAMP(6)` | indexed, so expired sessions can be cleared quickly |
-
-### What happens on delete
-
-- Deleting a user deletes the games they host, their sign-ups, and their notifications. Locations they added stay, with `created_by` set to `NULL`.
-- Deleting an event deletes its sign-ups and its notifications.
-- A sport or location can't be deleted while a game still uses it.
-- To cancel a game, set `status = 'cancelled'` instead of deleting it. That way players can still be told about it.
-
-### Indexes
-
-| Index | Speeds up |
+| Command | What it does |
 | --- | --- |
-| `events (starts_at)` | listing upcoming games and the cleanup job |
-| `events (host_id)`, `events (sport_id)`, `events (location_id)` | "my games", sport filters, and games at a location |
-| `locations (latitude, longitude)` | finding pins inside the map's visible area |
-| `event_participants (user_id)` | "games I've joined" (the primary key already covers lookups by event) |
-| `notifications (user_id, is_read)` | a user's unread notifications |
+| `npm install` | Installs the Firebase CLI and test tools. Run it once. |
+| `npm test` | Runs every test against local emulators. It never touches the live database and doesn't need a login. |
+| `npm run emulators` | Starts the local Auth and Firestore emulators, with the Emulator UI at http://127.0.0.1:4000. |
+| `npx firebase login`, then `npm run deploy:firestore` | Deploys the rules and indexes to the live project (`sport-pick-up-app-team-4`). You need access to the project in the Firebase console. |
 
-Primary keys and `UNIQUE` columns get an index automatically.
+**Deploying the rules replaces all the rules in the project.** Any collection that isn't in `firestore.rules` becomes unreadable, so add a rule for each new collection before deploying, and run `npm test` first.
 
-## How the schema covers the requirements
+## How Firebase covers the requirements
 
-These are the requirements from [`requirements.txt`](../Documents/requirements.txt).
+These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requirement.txt).
 
-| Requirement | How the database supports it |
-| --- | --- |
-| Database with user info, registration, login | `users` table, with unique `username` and `email` |
-| Passwords hashed before storage | `password_hash` holds a bcrypt hash, and there's no plain-text password column |
-| Sessions: login, logout, stay logged in | `session` table through `connect-pg-simple`, so sessions survive server restarts |
-| Database with event info | `events`, `sports`, and `event_participants` tables |
-| Map integration | `latitude` and `longitude` on `locations`, filtered by the map's visible area |
-| Real-time updates | The server pushes changes to clients (for example with Socket.IO) after it writes. `created_at` and `updated_at` let clients catch up on what changed. |
-| Media storage for profile and event images | The files are stored outside the database, which stores their path or URL in `profile_image_url` and `image_url` |
-| Notifications | `notifications` table |
-| Removing past events | A cleanup query the server runs on a timer (see below) |
-| User info only editable by its owner | Every edit query includes the owner's id from the session in its `WHERE` clause |
-| Built and run in Docker | `db` service in `docker-compose.yml`, with init scripts |
-
-## Query patterns
-
-These examples use pg-promise's `$1, $2` placeholders.
-
-**Upcoming games inside the map's visible area**, with player counts. The map gives you the south, north, west, and east edges of what's on screen.
-
-```sql
-SELECT e.event_id, e.title, s.name AS sport, l.name AS location,
-       l.latitude, l.longitude, e.starts_at, e.max_players,
-       COUNT(p.user_id) AS player_count
-FROM events e
-JOIN sports s    ON s.sport_id = e.sport_id
-JOIN locations l ON l.location_id = e.location_id
-LEFT JOIN event_participants p ON p.event_id = e.event_id
-WHERE e.status = 'scheduled'
-  AND e.ends_at > NOW()
-  AND l.latitude  BETWEEN $1 AND $2   -- south, north
-  AND l.longitude BETWEEN $3 AND $4   -- west, east
-GROUP BY e.event_id, s.name, l.name, l.latitude, l.longitude
-ORDER BY e.starts_at;
-```
-
-**Join a game, unless it's full.** Run this in a transaction that locks the event row first, so two people can't grab the last spot at the same time.
-
-```js
-const joined = await db.tx(async (t) => {
-  await t.one('SELECT event_id FROM events WHERE event_id = $1 FOR UPDATE', [eventId]);
-  const result = await t.result(
-    `INSERT INTO event_participants (event_id, user_id)
-     SELECT e.event_id, $2
-     FROM events e
-     WHERE e.event_id = $1
-       AND e.status = 'scheduled'
-       AND (e.max_players IS NULL
-            OR e.max_players > (SELECT COUNT(*) FROM event_participants p
-                                WHERE p.event_id = e.event_id))`,
-    [eventId, userId]
-  );
-  return result.rowCount === 1; // false means the game is full or not open
-});
-```
-
-If the user has already joined, the insert fails with a unique-violation error (code `23505`), but only while the game still has room. Once it's full, it returns `false` like any other join. To always show "you've already joined", check `event_participants` for the user before calling this.
-
-**Edit a game, only if you're the host.** The user's id comes from `req.session`, never from the form.
-
-```sql
-UPDATE events
-SET title = $3, description = $4, updated_at = NOW()
-WHERE event_id = $1 AND host_id = $2;
--- 0 rows updated means the game doesn't exist or this user isn't the host.
-```
-
-**Clean up past games.** The server runs this on a timer, for example once an hour.
-
-```sql
--- Hide finished games from listings but keep them for history.
-UPDATE events
-SET status = 'completed', updated_at = NOW()
-WHERE status = 'scheduled' AND ends_at < NOW();
-
--- Optional: delete games that finished more than 30 days ago.
-DELETE FROM events WHERE ends_at < NOW() - INTERVAL '30 days';
-```
-
-## Changing the schema
-
-**While we're still developing,** and nobody has data worth keeping:
-
-1. Edit `database/init/create.sql`, and `insert.sql` if the seed data needs to change.
-2. Rebuild with `docker compose down -v` and then `docker compose up -d db`.
-3. Tell the team, because everyone has to run step 2 after pulling the change.
-
-**Once a database has data worth keeping,** such as the one used for a demo or deployment, don't wipe it. Instead:
-
-1. Add a numbered file to `database/migrations/`, such as `001_add_waitlist.sql`. Wrap it in `BEGIN;` and `COMMIT;` so it applies fully or not at all.
-2. Apply it:
-
-   ```bash
-   docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d pickup_finder < database/migrations/001_add_waitlist.sql
-   ```
-
-3. Make the same change in `create.sql`, so a fresh setup ends up with the same schema.
-
-Any schema change goes through a pull request that Jun reviews.
-
-## Seed data
-
-`database/init/insert.sql` fills a fresh database with sample data so the app has something to show during development. It should include:
-
-- the list of sports (for example Basketball, Soccer, Volleyball, Tennis, Pickleball, Ultimate Frisbee),
-- three to five test users that share one known test password,
-- a few locations around Boulder,
-- games in the past and in the future, some full and some open,
-- some sign-ups and notifications.
-
-Tips:
-
-- **Use relative times** such as `NOW() + INTERVAL '2 days'` instead of fixed dates. Otherwise every seed game ends up in the past within a few weeks, and the cleanup job hides it.
-- **Look up ids by name** instead of hardcoding numbers, for example `(SELECT sport_id FROM sports WHERE name = 'Basketball')`.
-- **Store real bcrypt hashes** so the test users can actually log in. Generate one with:
-
-  ```bash
-  node -e "console.log(require('bcryptjs').hashSync('password123', 10))"
-  ```
-
-- Never put real people's emails or passwords in the seed file. If the deployed database shouldn't have test accounts, don't mount `insert.sql` there.
+| Requirement | How it's covered | Status |
+| --- | --- | --- |
+| Login and registration pages | Firebase Authentication with email and password ([`login/`](login/), [`Prototyping/registration.js`](Prototyping/registration.js)) | Built |
+| Database with user info | `users` collection | Built |
+| Passwords hashed before storage | Firebase Authentication hashes passwords (with scrypt) and never gives them back. We never store a password ourselves. | Built |
+| Sessions: login, logout, stay logged in | Firebase Authentication keeps the user signed in across page loads and refreshes their login token. `signOut` logs out. | Built |
+| A server connecting UI to Database | Firebase plays this role: the SDK talks to Firestore, and the security rules enforce what a server would. We don't run a server of our own. | Check with the TA ([Risk 1](#1-firebase-might-not-meet-the-server-and-docker-requirements)) |
+| Built and run in Docker containers | Not covered yet | Open ([Risk 1](#1-firebase-might-not-meet-the-server-and-docker-requirements)) |
+| Database with event info | `events` collection | Built |
+| Map integration | Each game stores `lat` and `lng`, and `listEvents` finds games inside the map's view or within a distance | Built |
+| Real-time updates | `watchEvents` and `watchEvent` update the page as soon as a game changes | Built |
+| Media storage for profile and event images | Would use Cloud Storage, with the image URL saved on the profile or game | Not started |
+| Notifications | Not designed yet | Not started |
+| Removing past events and enforcing other rules | The security rules enforce the player limit and host-only edits. Searches only return games that haven't started, so past games drop off the map. Nothing deletes old games yet. | Partly built |
+| User info only editable by its owner | The `users` rule only lets you write your own profile | Built |
 
 ## Conventions
 
-**Naming**
-
-- Tables and columns use `snake_case`. Table names are plural (`users`, `events`).
-- Primary keys are `<singular>_id`, such as `user_id` and `event_id`.
-- Foreign keys use the name of the column they point to (`user_id`), unless a clearer name explains the role (`host_id`, `created_by`).
-- SQL keywords are uppercase and names are lowercase.
-
-**Types**
-
-- Every timestamp is `TIMESTAMPTZ`. Postgres stores it in UTC, and the UI converts it to local time.
-- Ids are `SERIAL`. Coordinates are `NUMERIC(9,6)`, which is accurate to about 10 cm.
-- Fixed lists of values use `VARCHAR` with a `CHECK` constraint instead of Postgres `ENUM` types, because a `CHECK` is easier to change later.
-- Every table has `created_at`. Tables that users edit also have `updated_at`, which the server sets with `updated_at = NOW()` in each `UPDATE`.
-
-**Queries and security**
-
-- Always use placeholders (`$1` or `${name}` in pg-promise). Never build SQL by gluing user input into a string, because that's how SQL injection happens.
-- Only the login query reads `password_hash`. Never put it in a session or an API response. Avoid `SELECT *` on `users` and list the columns you need.
-- The id of the person making a change always comes from `req.session`, never from a form field or the URL.
-- Lowercase emails before saving them and before looking them up.
-- Keep secrets in `.env`, and never commit it.
+- **Field names** are `camelCase` (`hostId`, `startTime`), like the rest of our JavaScript.
+- **Document IDs:** a profile's ID is its user's Auth ID. Games get random IDs from Firestore.
+- **Times** are Firestore timestamps, which are stored in UTC. Pass JavaScript `Date`s in, and convert to local time only when showing them.
+- **Fixed lists** (sports and skill levels) are in both `events.js` and `firestore.rules`. Change both, or the rules will reject the new value.
+- **Changing a field** means changing `events.js`, `firestore.rules`, the tests, and the tables in this file and in `firebase/README.md`. See "Changing the data model" in [`firebase/README.md`](firebase/README.md).
+- **Security:** anything that matters is checked in the rules, not only in the page. A user's ID always comes from `auth.currentUser`, never from a form field or the URL.
+- **Secrets:** the `apiKey` in `firebase-config.js` only identifies our project and is safe to commit. Never commit a service account key or any other credential file.
 
 ## Risks
 
 > **Note:** This section is our submission for extra credit.
 
-These are the risks we see for the database part of Pickup-Finder, as of October 28, 2026. Severity is how much damage a risk would do if it happened:
+These are the risks we see for the database part of Pickup-Finder, updated on November 3, 2026, after the team chose Firebase. Severity is how much damage a risk would do if it happened:
 
 - **High:** we could miss a course requirement, expose users' data, or block the rest of the team.
 - **Medium:** it costs days of rework or breaks a feature, but there's a workaround.
 - **Low:** it's an annoying bug that's quick to fix.
 
-| # | Risk | Severity |
-| --- | --- | --- |
-| 1 | [The team hasn't agreed on PostgreSQL or Firebase](#1-the-team-hasnt-agreed-on-postgresql-or-firebase) | High |
-| 2 | [Passwords, sessions, or other users' data get exposed](#2-passwords-sessions-or-other-users-data-get-exposed) | High |
-| 3 | [The schema doesn't match the wireframe or the server code](#3-the-schema-doesnt-match-the-wireframe-or-the-server-code) | Medium |
-| 4 | [Database data is lost, or everyone's local copy is different](#4-database-data-is-lost-or-everyones-local-copy-is-different) | Medium |
-| 5 | [Optional features crowd out the required ones](#5-optional-features-crowd-out-the-required-ones) | Medium |
-| 6 | [Only one person knows how the database works](#6-only-one-person-knows-how-the-database-works) | Medium |
-| 7 | [Two players take the last spot in a game](#7-two-players-take-the-last-spot-in-a-game) | Medium |
-| 8 | [Dates and times come out wrong](#8-dates-and-times-come-out-wrong) | Low |
+| # | Risk | Severity | Status |
+| --- | --- | --- | --- |
+| 1 | [Firebase might not meet the server and Docker requirements](#1-firebase-might-not-meet-the-server-and-docker-requirements) | High | Open |
+| 2 | [Users' data gets exposed or changed by the wrong person](#2-users-data-gets-exposed-or-changed-by-the-wrong-person) | High | Partly handled |
+| 3 | [The data model doesn't match the wireframe or the pages](#3-the-data-model-doesnt-match-the-wireframe-or-the-pages) | Medium | Open |
+| 4 | [Everyone shares one live database](#4-everyone-shares-one-live-database) | Medium | Partly handled |
+| 5 | [Searches fail on the live project because an index is missing](#5-searches-fail-on-the-live-project-because-an-index-is-missing) | Medium | Partly handled |
+| 6 | [Optional features crowd out the required ones](#6-optional-features-crowd-out-the-required-ones) | Medium | Open |
+| 7 | [Only one person knows how the database works](#7-only-one-person-knows-how-the-database-works) | Medium | Partly handled |
+| 8 | [Two players take the last spot in a game](#8-two-players-take-the-last-spot-in-a-game) | Medium | Handled |
+| 9 | [Dates and times come out wrong](#9-dates-and-times-come-out-wrong) | Low | Partly handled |
 
-### 1. The team hasn't agreed on PostgreSQL or Firebase
+### 1. Firebase might not meet the server and Docker requirements
 
-**Severity: High**
+**Severity: High · Status: Open**
 
-This README plans for PostgreSQL with our own Node server. The plan in [`Documents/README.md`](../Documents/README.md) was rewritten on October 27 to use Firebase instead, with no server of our own. Until the team picks one, people may build the UI and server against different backends, and whoever built against the one we drop has to redo their work. The course requirements in [`requirements.txt`](../Documents/requirements.txt) also include "a server connecting UI to Database" and "built and run in docker containers", so we'd need to confirm that a Firebase app without a server still meets them.
-
-Mitigation:
-
-- Decide at the next team meeting, using `requirements.txt` as the checklist. Ask the TA whether Firebase counts as the required server and database before committing to it.
-- Keep one plan. Once we decide, update the chosen document and delete the other, so nobody builds from the old one.
-- Until then, work on the parts that carry over to either choice: the list of sports, the fields a game and a profile need, and the skill levels.
-
-### 2. Passwords, sessions, or other users' data get exposed
-
-**Severity: High**
-
-The database holds emails, password hashes, and login sessions. The common ways these leak in a project like ours are committing `.env` with the database password and `SESSION_SECRET`, sending `password_hash` back in an API response, building SQL by pasting user input into a string (SQL injection), and trusting a user id from a form, so one user can edit another's profile or game. The requirements specifically say passwords must be hashed and user info must only be editable by its owner.
+The course requirements include "a server connecting UI to Database" and "built and run in docker containers". With Firebase, the pages talk to Firestore directly and we don't run a server or any containers. If the graders read these requirements literally, we could lose points late in the project, when it's hardest to add a server.
 
 Mitigation:
 
-- Follow the "Queries and security" rules in [Conventions](#conventions): placeholders in every query, the user's id from `req.session` only, and `password_hash` read only by the login query.
-- Add `.env` to `.gitignore` before anyone creates one, and commit only `.env.example`. If a secret is ever committed, change it, because deleting the file doesn't remove it from git history.
-- Hash passwords with bcrypt at a cost of 10 or higher, and call `req.session.regenerate()` when someone logs in, so an old session id can't be reused.
-- Test that editing someone else's game or profile changes 0 rows. This is already in Step 3 of [PLAN.md](PLAN.md).
-- On any shared or deployed server, remove the `5432:5432` port mapping so only the server container can reach the database, and use a strong password.
+- Ask the TA at the next weekly meeting whether Firebase counts as the server and database, and write the answer in the meeting minutes.
+- If it doesn't count, the smallest fix is a small Node/Express server in a Docker container that serves the pages in `ProjectSourceCode/`, plus a `docker-compose.yml` that starts it. The pages and Firestore code stay the same.
+- The Firebase emulators can also run in a container for local development, which would cover Docker for the database side.
 
-### 3. The schema doesn't match the wireframe or the server code
+### 2. Users' data gets exposed or changed by the wrong person
 
-**Severity: Medium**
+**Severity: High · Status: Partly handled**
 
-The schema above was written before the wireframe ([`Prototyping/wireframe.html`](../Prototyping/wireframe.html)), and they already disagree. The wireframe uses Casual and Competitive skill levels, while the schema has beginner, intermediate, and advanced. It also shows a waitlist, a show-up rate, and a neighborhood on profiles, and none of those have columns yet. Later on, the server code could also use column names that don't match `create.sql`. Either way, pages break, or features get built that the database can't store.
+Anyone can open the browser console and call Firestore with their own login, so the page's checks don't protect anything. Only the security rules do. If the live project is still on the console's "test mode" rules, anyone can read or overwrite every profile and game, and test mode also expires after 30 days, after which every read fails. Under our current `users` rule, any signed-in user can read every profile, including email addresses.
 
 Mitigation:
 
-- Before writing `create.sql`, go through the wireframe page by page with the UI and server teammates and list every field it shows. Add what's missing to the schema, or cut it from the wireframe. This is part of Step 1 of [PLAN.md](PLAN.md).
-- Once `create.sql` exists, it's the single source of truth. Schema changes go through a pull request, as described in [Changing the schema](#changing-the-schema).
-- Keep the server's SQL in one place, such as `database/queries.sql` or a single `db` module, so a renamed column only has to be fixed once. Run every query against a fresh database after each schema change.
+- Deploy `firestore.rules` to replace test mode, as described in [Working with the database](#working-with-the-database).
+- The rules tests in `firebase/tests/rules.test.js` try the attacks directly: editing someone else's game, RSVPing another person, going over the player limit, and writing someone else's profile. Run `npm test` before every deploy.
+- Have the profile team tighten the `users` rule, for example by keeping email in a private document only its owner can read, and by checking each field's type and length.
+- Never commit a service account key. If one is ever committed, delete the key in the Google Cloud console, because removing the file doesn't remove it from git history.
 
-### 4. Database data is lost, or everyone's local copy is different
+### 3. The data model doesn't match the wireframe or the pages
 
-**Severity: Medium**
+**Severity: Medium · Status: Open**
 
-Each teammate runs their own database in a Docker volume. `docker compose down -v` deletes that volume, and so does resetting Docker Desktop. Because the init scripts only run when the volume is empty, someone who pulls a new `create.sql` but doesn't rebuild keeps the old tables, and code that works for one person fails for another. Losing local test data is minor, but losing the database we demo from would be serious.
-
-Mitigation:
-
-- Keep `insert.sql` complete enough that any database can be rebuilt with useful data in a minute. Nobody should depend on data they typed in by hand.
-- Announce schema changes in the team chat, and rebuild with `docker compose down -v` after pulling one (see [Changing the schema](#changing-the-schema)).
-- Back up the demo database before the demo and before any migration:
-
-  ```bash
-  docker compose exec -T db pg_dump -U postgres pickup_finder > backup.sql
-  # to restore into an empty database:
-  docker compose exec -T db psql -U postgres -d pickup_finder < backup.sql
-  ```
-
-- Never run `down -v` on the demo database. Change it only with numbered migrations.
-
-### 5. Optional features crowd out the required ones
-
-**Severity: Medium**
-
-[PLAN.md](PLAN.md) lists a friends list, ELO skill ratings, and matchmaking as stretch goals, and our project scope already adds real-time updates, notifications, and image uploads on top of the class requirements. Each one adds tables, queries, and testing. If we start them early, login, sessions, and joining games might not be solid by the checkpoint.
+The wireframe ([`Prototyping/wireframe.html`](Prototyping/wireframe.html)) shows things the data model doesn't have yet: a waitlist ("#2 in line"), messages from the host, a show-up rate, a neighborhood, and a skill level for each sport on profiles. If the front end builds those screens first, they'll have nowhere to save the data, or teammates will add fields the rules reject.
 
 Mitigation:
 
-- Build in the order in [PLAN.md](PLAN.md). Optional features start only after Steps 1 to 3 are done and tested.
-- Add each optional feature as its own migration file, so it can be dropped without touching the core tables.
-- Agree on a cut list ahead of time. If we're behind a week before a deadline, matchmaking is cut first, then ratings, then the friends list.
+- Treat the tables in this file and in `firebase/README.md` as the agreement between the pages and the database. Go through the wireframe with the front-end teammates and decide which of these to build and which to cut.
+- Add fields the way [Conventions](#conventions) describes, with a test, through a pull request.
 
-### 6. Only one person knows how the database works
+### 4. Everyone shares one live database
 
-**Severity: Medium**
+**Severity: Medium · Status: Partly handled**
 
-Jun owns the database. If Jun is sick, busy with other classes, or our schedules don't line up, the server teammates can't add a table or fix a query on their own. Plans have also been edited directly on `main` without review, so two people's versions of the same document can overwrite each other.
-
-Mitigation:
-
-- Keep this README and [PLAN.md](PLAN.md) complete enough that any teammate can set up, rebuild, and change the database without help.
-- Make changes to `database/` and `Documents/` through pull requests with at least one reviewer, instead of editing `main` directly.
-- Early on, have a server teammate rebuild the database and run the queries on their own laptop, so at least two people have done it.
-- Post progress and blockers in the team chat every week, so a stuck task shows up early.
-
-### 7. Two players take the last spot in a game
-
-**Severity: Medium**
-
-If two people join a game with one spot left at the same moment, both requests can see an open spot and both get added, so the game ends up over `max_players`. The same would apply to a waitlist if we add one. It's easy to miss, because it never happens when one person tests alone.
+We all use the same Firebase project, so test games, half-finished pages, and a bad rules deploy affect everyone at once, including the data we'd demo from. The free Spark plan also has daily limits (50,000 document reads and 20,000 writes). A page that re-reads every game in a loop could use those up and break the app until the next day.
 
 Mitigation:
 
-- Use the join query in [Query patterns](#query-patterns). It locks the game's row in a transaction, so the second request waits and then sees that the game is full.
-- The (`event_id`, `user_id`) primary key already stops one person from joining the same game twice.
-- Test it with two connections at once, as listed in Step 3 of [PLAN.md](PLAN.md).
+- Develop and test against the emulators (`npm run emulators`, `npm test`), which use a separate demo project and never touch the live data.
+- Only deploy rules from `main`, after the tests pass.
+- Use `watchEvents` for live lists instead of reloading on a timer, and keep its `max` reasonable. Check usage in the Firebase console during the week before the demo.
+- Before the demo, write a small script that creates the demo games, so they can be recreated if they're deleted or changed.
 
-### 8. Dates and times come out wrong
+### 5. Searches fail on the live project because an index is missing
 
-**Severity: Low**
+**Severity: Medium · Status: Partly handled**
 
-Games could show the wrong start time if a timestamp is saved without a time zone or converted twice. The cleanup job could then mark games `completed` too early. Seed games with fixed dates also fall into the past after a few weeks and disappear from the map.
+Searches that combine sport, time, and location need composite indexes. The emulators don't check indexes, so a search can pass every test and still fail on the live project with "The query requires an index".
 
 Mitigation:
 
-- Use `TIMESTAMPTZ` for every timestamp, and convert to local time only in the UI (see [Conventions](#conventions)).
-- Use relative times like `NOW() + INTERVAL '2 days'` in the seed data.
-- Test the cleanup query with games that have just ended, are in progress, and haven't started yet.
+- `firestore.indexes.json` lists an index for every search in `events.js`, and `npm run deploy:firestore` deploys them along with the rules. They take a few minutes to build.
+- Try each search on the live project once after the first deploy. If one fails, the browser console error has a link that creates the missing index. Add it to `firestore.indexes.json` too, so the next deploy keeps it.
+
+### 6. Optional features crowd out the required ones
+
+**Severity: Medium · Status: Open**
+
+On top of the class requirements, our scope adds real-time updates, notifications, and image uploads, and we've talked about a friends list, skill ratings, matchmaking, and a waitlist. Each one adds fields, rules, and tests. If we start them early, the required features (login, registration, and creating and joining games) might not be solid by the checkpoint.
+
+Mitigation:
+
+- Finish and test the required features first. Login, registration, and games are built now. The pages that use them come next.
+- Agree on a cut list ahead of time. If we're behind a week before a deadline, cut matchmaking first, then ratings, then the friends list.
+
+### 7. Only one person knows how the database works
+
+**Severity: Medium · Status: Partly handled**
+
+Jun owns the database. If Jun is sick, busy with other classes, or our schedules don't line up, the rest of the team can't change the rules or fix a search on their own. Documents have also been edited directly on `main`, so two people's versions can overwrite each other.
+
+Mitigation:
+
+- This README and [`firebase/README.md`](firebase/README.md) explain the data, the functions, and how to test and deploy, so any teammate can do it.
+- `npm test` needs no setup beyond `npm install` and Java, so anyone can check a change.
+- Make changes to `firebase/` through pull requests with at least one reviewer, instead of editing `main` directly.
+
+### 8. Two players take the last spot in a game
+
+**Severity: Medium · Status: Handled**
+
+If two people join a game with one spot left at the same moment, both could see an open spot and both get added. It's easy to miss, because it never happens when one person tests alone.
+
+Mitigation:
+
+- `rsvpToEvent` joins inside a Firestore transaction, so if the game changes while you're joining, it reads the game again and sees that it's full.
+- The security rules also refuse any RSVP that would go over `playerLimit`, and Firestore applies writes to one game one at a time. So even a request that skips `events.js` can't overfill a game.
+- A test has four people try for the last two spots at once, and checks that exactly two get in. A waitlist, if we add one, would need the same kind of test.
+
+### 9. Dates and times come out wrong
+
+**Severity: Low · Status: Partly handled**
+
+Games could show the wrong start time if a time is converted twice or read in the wrong time zone. The time filters (today, tonight, this weekend) use the viewer's time zone, which is what we want for people in the same city but could surprise a tester whose computer is set to another time zone.
+
+Mitigation:
+
+- Times are stored as Firestore timestamps (UTC), and `events.js` hands the page JavaScript `Date`s. Format them with `toLocaleString()` or similar, only when showing them.
+- `createEvent` reads `datetime-local` input values as local time, so pass the input's value straight through without converting it yourself.
+- The tests use times relative to now, so they don't break as the calendar moves on.
