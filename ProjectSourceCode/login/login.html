@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log in - PickupFinder</title>
+</head>
+<body>
+  <h1>PickupFinder</h1>
+  <h2>Log in</h2>
+
+  <form id="login-form" novalidate>
+    <p>
+      <label for="email">Email</label><br>
+      <input type="email" id="email" autocomplete="email">
+    </p>
+    <p>
+      <label for="password">Password</label><br>
+      <input type="password" id="password" autocomplete="current-password">
+    </p>
+    <p id="error" style="color: red;"></p>
+    <button type="submit" id="login-btn">Log in</button>
+  </form>
+
+  <p>Don't have an account?</p>
+  <button type="button" onclick="location.href='register.html'">Register</button>
+
+  <script type="module" src="login.js"></script>
+</body>
+</html>
