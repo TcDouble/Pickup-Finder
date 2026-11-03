@@ -1,0 +1,3 @@
+# Firebase CLI and emulator files
+*-debug.log
+.firebase/

@@ -1,0 +1,146 @@
+rules_version = '2';
+
+// Firestore security rules for Pickup-Finder.
+//
+// These rules are the real enforcement. The front end (events.js) checks the
+// same things first so it can show friendly errors, but anyone can call
+// Firestore directly, so anything that matters must be checked here too.
+//
+// Deploying this file REPLACES every rule in the Firebase project, so any
+// collection not listed here becomes unreadable and unwritable.
+//
+// Test with: npm test   (see README.md in this folder)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // ------------------------------------------------------------------
+    // users/{uid}: profiles written by the registration page.
+    // Minimal rule so registration keeps working; the profile team should
+    // tighten it (field validation, what other users may see).
+    // ------------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // events/{eventId}: pickup games. See README.md for the data model.
+    // ------------------------------------------------------------------
+    match /events/{eventId} {
+
+      // Keep in sync with SPORTS, SKILL_LEVELS and the limits in events.js.
+      function sports() {
+        return ['basketball', 'soccer', 'volleyball', 'tennis', 'pickleball', 'football'];
+      }
+
+      function eventFields() {
+        return ['sportId', 'title', 'description', 'skillLevel', 'startTime', 'endTime',
+                'location', 'playerLimit', 'hostId', 'hostName', 'participantIds',
+                'status', 'createdAt'];
+      }
+
+      // Fields the host may change after creating the event.
+      function hostEditableFields() {
+        return ['title', 'description', 'skillLevel', 'startTime', 'endTime',
+                'location', 'playerLimit', 'status'];
+      }
+
+      function validLocation(loc) {
+        return loc is map
+          && loc.keys().hasAll(['name', 'address', 'lat', 'lng'])
+          && loc.keys().hasOnly(['name', 'address', 'lat', 'lng'])
+          && loc.name is string && loc.name.size() > 0 && loc.name.size() <= 100
+          && loc.address is string && loc.address.size() <= 200
+          && loc.lat is number && loc.lat >= -90 && loc.lat <= 90
+          && loc.lng is number && loc.lng >= -180 && loc.lng <= 180;
+      }
+
+      // Shape and values every event document must have, on create and on
+      // every host edit.
+      function validEvent(e) {
+        return e.keys().hasAll(eventFields())
+          && e.keys().hasOnly(eventFields())
+          && e.sportId in sports()
+          && e.title is string && e.title.size() <= 60
+          && e.description is string && e.description.size() <= 500
+          && e.skillLevel in ['casual', 'competitive']
+          && e.startTime is timestamp && e.startTime > request.time
+          && e.endTime is timestamp && e.endTime > e.startTime
+          && e.endTime <= e.startTime + duration.value(12, 'h')
+          && validLocation(e.location)
+          && e.playerLimit is int && e.playerLimit >= 2 && e.playerLimit <= 50
+          && e.participantIds is list && e.participantIds.size() <= e.playerLimit
+          && e.hostId is string
+          && e.hostName is string && e.hostName.size() <= 60
+          && e.status in ['scheduled', 'cancelled'];
+      }
+
+      // Create: you are the host, you are the only player, and it starts
+      // out scheduled.
+      function validNewEvent() {
+        let e = request.resource.data;
+        return validEvent(e)
+          && e.hostId == request.auth.uid
+          && e.participantIds == [request.auth.uid]
+          && e.status == 'scheduled'
+          && e.createdAt == request.time;
+      }
+
+      function onlyParticipantsChanged() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantIds']);
+      }
+
+      // RSVP: add exactly yourself, once, without going over the limit.
+      // Writes to one document are applied one at a time, so two people
+      // racing for the last spot can't both get in.
+      function isJoin() {
+        let before = resource.data.participantIds;
+        let after = request.resource.data.participantIds;
+        return onlyParticipantsChanged()
+          && !(request.auth.uid in before)
+          && after.size() == before.size() + 1
+          && after.toSet() == before.toSet().union([request.auth.uid].toSet())
+          && after.size() <= resource.data.playerLimit;
+      }
+
+      // Cancel RSVP: remove exactly yourself. The host can't leave; they
+      // cancel the event instead.
+      function isLeave() {
+        let before = resource.data.participantIds;
+        let after = request.resource.data.participantIds;
+        return onlyParticipantsChanged()
+          && request.auth.uid in before
+          && request.auth.uid != resource.data.hostId
+          && after.size() == before.size() - 1
+          && after.toSet() == before.toSet().difference([request.auth.uid].toSet());
+      }
+
+      // Host edit: details and status only (status can go to 'cancelled').
+      // The host can't change who is going or hand the event to someone else.
+      function isHostEdit() {
+        return request.auth.uid == resource.data.hostId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(hostEditableFields())
+          && validEvent(request.resource.data);
+      }
+
+      allow read: if signedIn();
+
+      allow create: if signedIn() && validNewEvent();
+
+      // Nothing changes once an event is cancelled or has started.
+      allow update: if signedIn()
+        && resource.data.status == 'scheduled'
+        && resource.data.startTime > request.time
+        && (isJoin() || isLeave() || isHostEdit());
+
+      // Cancel instead of deleting, so players still see what happened.
+      allow delete: if false;
+    }
+  }
+}

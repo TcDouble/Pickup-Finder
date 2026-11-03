@@ -1,0 +1,16 @@
+{
+  "name": "pickup-finder-firebase",
+  "private": true,
+  "type": "module",
+  "description": "Firestore rules, indexes, and emulator tests for Pickup-Finder events",
+  "scripts": {
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-pickup-finder",
+    "test": "firebase emulators:exec --only auth,firestore --project demo-pickup-finder \"node --import ./tests/register-loader.js --test --test-concurrency=1 tests/rules.test.js tests/events.test.js\"",
+    "deploy:firestore": "firebase deploy --only firestore"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "10.12.2",
+    "firebase-tools": "^14.27.0"
+  }
+}
