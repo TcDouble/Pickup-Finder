@@ -1,6 +1,34 @@
 # Release Notes — Team 012-4
 
-Last edited: `<j01001000>`
+Last edited:
+
+- 2026-11-3 `<j01001000>`
+- 2026-10-30 `<j01001000>`
+
+## Week 12 — `November 3, 2026`
+
+### Added
+
+- `<feature>` (#`<PR number>`, `<github-username>`)
+- Firebase Events Database. `<j01001000>`
+
+### Changed
+
+- Project board and epics were updated on Github.
+
+### Fixed
+
+- `<...>`
+
+### Planned for next week
+
+The checklist issue on the project board:
+- Add 2 User Stories (Individual Task) `<https://github.com/TcDouble/Pickup-Finder/issues/9>`
+- Lab 9 Extra Credit `<https://github.com/TcDouble/Pickup-Finder/issues/10>`
+- Login and Register Page `https://github.com/TcDouble/Pickup-Finder/issues/4`
+- User Database `https://github.com/TcDouble/Pickup-Finder/issues/5`
+
+---
 
 ## Week 11 — `October 28, 2026`
 
