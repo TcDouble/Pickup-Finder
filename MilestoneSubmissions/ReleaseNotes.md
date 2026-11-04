@@ -19,6 +19,7 @@ Last edited:
 ### Fixed
 
 - `<...>`
+- Fixed stories 5, 7, and 12, to better match formating. `julianrayon-collab`
 
 ### Planned for next week
 
