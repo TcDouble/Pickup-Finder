@@ -34,7 +34,7 @@ The checklist issue on the project board:
 ## Week 11 — `October 28, 2026`
 
 ### Added
-
+- Created two user stories with acceptance criteria, linked them to their respective Epics, and assigned story points. (KUHN114514)
 - `<feature>` (#`<PR number>`, `<github-username>`)
 - Project board and epics were set up on Github.
 - Login and register page was set up with Firebase. `<miner5758>`, `julianrayon-collab`
