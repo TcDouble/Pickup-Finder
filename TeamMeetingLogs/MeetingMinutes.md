@@ -7,7 +7,10 @@ Last edited:
 
 ### Agenda
 
-- 
+- Paul joined remotely. He's at a conference.
+- Discussed completion of login/registration, events database. Front end pages need to connect.
+- Plan for the week: unit testing, connecting pages and functionalities.
+- Designee for Canvas submissions: Jun
 
 ---
 
