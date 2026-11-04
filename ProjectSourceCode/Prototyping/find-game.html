@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Find a pickup game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --court: #1f4d3a;
+      --court-dark: #153629;
+      --line: #f2efe6;
+      --ink: #1b1f1d;
+      --muted: #5d6762;
+      --field: #ffffff;
+      --border: #c9cfca;
+      --error: #b3261e;
+      --bg: #eef1ee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--field);
+      border: 2px solid var(--court);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    header {
+      background: var(--court);
+      color: var(--line);
+      padding: 24px 28px 20px;
+      background-image: radial-gradient(circle at 100% 0, transparent 38px, var(--court-dark) 39px, var(--court-dark) 41px, transparent 42px);
+    }
+    h1 {
+      font-family: "Barlow Condensed", sans-serif;
+      font-weight: 700;
+      font-size: 2rem;
+      margin: 0 0 4px;
+      letter-spacing: 0.01em;
+    }
+    header p { margin: 0; opacity: 0.85; }
+    form { padding: 24px 28px 28px; display: grid; gap: 16px; }
+    label, legend { font-weight: 500; font-size: 0.95rem; }
+    .field { display: grid; gap: 6px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 420px) { .row { grid-template-columns: 1fr; } }
+    input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
+      font: inherit;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      width: 100%;
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+      outline: 3px solid #e8b100;
+      outline-offset: 1px;
+    }
+    .hint { font-size: 0.85rem; color: var(--muted); }
+    fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips label {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 999px;
+      cursor: pointer; font-weight: 400;
+    }
+    .chips input { accent-color: var(--court); }
+    .chips label:has(input:checked) { border-color: var(--court); background: #e3ece6; }
+    button[type="submit"] {
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 1.2rem; font-weight: 700; letter-spacing: 0.02em;
+      padding: 12px; border: 0; border-radius: 4px;
+      background: var(--court); color: var(--line); cursor: pointer;
+    }
+    button[type="submit"]:hover { background: var(--court-dark); }
+    button[disabled] { opacity: 0.6; cursor: progress; }
+    #message { min-height: 1.2em; font-size: 0.92rem; color: var(--error); margin: 0; }
+    #message.ok { color: var(--court); }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>Find a pickup game</h1>
+      <p>Tell us what you're looking for and we'll show games near you.</p>
+    </header>
+
+    <form id="find-form" novalidate>
+      <!-- Sport (event title: "Pickup Basketball") -->
+      <fieldset>
+        <legend>Sport</legend>
+        <div class="chips">
+          <label><input type="radio" name="sport" value="basketball" checked /> Basketball</label>
+          <label><input type="radio" name="sport" value="soccer" /> Soccer</label>
+          <label><input type="radio" name="sport" value="volleyball" /> Volleyball</label>
+          <label><input type="radio" name="sport" value="tennis" /> Tennis</label>
+          <label><input type="radio" name="sport" value="pickleball" /> Pickleball</label>
+          <label><input type="radio" name="sport" value="football" /> Football</label>
+        </div>
+      </fieldset>
+
+      <!-- Where -->
+      <div class="field">
+        <label for="where">Where</label>
+        <input id="where" type="text" placeholder="Park / court name or area" required />
+      </div>
+
+      <div class="field">
+        <label for="distance">Within</label>
+        <select id="distance">
+          <option value="1">1 mile</option>
+          <option value="5" selected>5 miles</option>
+          <option value="10">10 miles</option>
+          <option value="25">25 miles</option>
+        </select>
+      </div>
+
+      <!-- When -->
+      <div class="row">
+        <div class="field">
+          <label for="date">Date</label>
+          <input id="date" type="date" required />
+        </div>
+        <div class="field">
+          <label for="time">Time</label>
+          <input id="time" type="time" />
+          <span class="hint">Leave blank for any time.</span>
+        </div>
+      </div>
+
+      <!-- Players -->
+      <div class="field">
+        <label for="players">Players in your group</label>
+        <input id="players" type="number" min="1" max="20" value="1" />
+        <span class="hint">We'll only show games with this many open spots.</span>
+      </div>
+
+      <!-- Level -->
+      <fieldset>
+        <legend>Level</legend>
+        <div class="chips">
+          <label><input type="radio" name="level" value="any" checked /> Any</label>
+          <label><input type="radio" name="level" value="casual" /> Casual</label>
+          <label><input type="radio" name="level" value="intermediate" /> Intermediate</label>
+          <label><input type="radio" name="level" value="competitive" /> Competitive</label>
+        </div>
+      </fieldset>
+
+      <!-- Description -->
+      <div class="field">
+        <label for="keywords">Anything else? <span class="hint">(optional)</span></label>
+        <textarea id="keywords" maxlength="200" placeholder="e.g. full court, indoor, lights at night"></textarea>
+        <span class="hint">Matched against the host's game description.</span>
+      </div>
+
+      <p id="message" role="alert" aria-live="polite"></p>
+      <button type="submit" id="submit-btn">Find games</button>
+    </form>
+  </main>
+
+  <!-- <script type="module" src="find-game.js"></script> -->
+</body>
+</html>
