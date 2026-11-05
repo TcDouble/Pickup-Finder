@@ -40,15 +40,15 @@ ProjectSourceCode/
 │   ├── package.json             # dev tools for tests and deploying
 │   ├── tests/                   # emulator tests for events.js and the rules
 │   └── README.md                # how the front end uses events.js
-├── login/                       # login and home pages
-└── Prototyping/                 # registration page and wireframe
+├── login-and-registration/      # login, registration, and home pages
+└── Prototyping/                 # wireframe and find-game prototype
 ```
 
 ## Collections
 
 ### `users/{uid}`
 
-One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`Prototyping/registration.js`](Prototyping/registration.js)) creates it. Paul and Julian own this collection.
+One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`login-and-registration/registration.js`](login-and-registration/registration.js)) creates it. Paul and Julian own this collection.
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -100,7 +100,7 @@ These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requ
 
 | Requirement | How it's covered | Status |
 | --- | --- | --- |
-| Login and registration pages | Firebase Authentication with email and password ([`login/`](login/), [`Prototyping/registration.js`](Prototyping/registration.js)) | Built |
+| Login and registration pages | Firebase Authentication with email and password ([`login-and-registration/`](login-and-registration/)) | Built |
 | Database with user info | `users` collection | Built |
 | Passwords hashed before storage | Firebase Authentication hashes passwords (with scrypt) and never gives them back. We never store a password ourselves. | Built |
 | Sessions: login, logout, stay logged in | Firebase Authentication keeps the user signed in across page loads and refreshes their login token. `signOut` logs out. | Built |

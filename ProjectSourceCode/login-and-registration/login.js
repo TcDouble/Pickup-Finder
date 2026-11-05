@@ -1,6 +1,6 @@
 import { auth } from "../firebase/firebase-config.js";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { MAP_PAGE, friendlyError, isValidEmail } from "./auth-helpers.js";
+import { MAP_PAGE, friendlyError, hasProfile, isValidEmail } from "./auth-helpers.js";
 
 const form = document.getElementById("login-form");
 const emailInput = document.getElementById("email");
@@ -8,8 +8,15 @@ const passwordInput = document.getElementById("password");
 const errorText = document.getElementById("error");
 const loginBtn = document.getElementById("login-btn");
 
-onAuthStateChanged(auth, (user) => {
-  if (user) window.location.href = MAP_PAGE;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
+  let profileMissing = false;
+  try {
+    profileMissing = !(await hasProfile(user.uid));
+  } catch (err) {
+    console.error(err);
+  }
+  window.location.href = profileMissing ? "registration.html" : MAP_PAGE;
 });
 
 form.addEventListener("submit", async (e) => {
@@ -31,7 +38,6 @@ form.addEventListener("submit", async (e) => {
   loginBtn.disabled = true;
   try {
     await signInWithEmailAndPassword(auth, email, password);
-    window.location.href = MAP_PAGE;
   } catch (err) {
     errorText.textContent = friendlyError(err.code);
     loginBtn.disabled = false;
