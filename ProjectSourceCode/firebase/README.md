@@ -21,7 +21,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/f
 import { listEvents, rsvpToEvent, friendlyEventError } from "../firebase/events.js";
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return (window.location.href = "../login/login.html");
+  if (!user) return (window.location.href = "../login-and-registration/login.html");
   const games = await listEvents({ sportId: "basketball", near: { lat: 40.015, lng: -105.27, radiusKm: 10 } });
   // ...draw the games...
 });

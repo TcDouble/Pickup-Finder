@@ -1,3 +1,6 @@
+import { db } from "../firebase/firebase-config.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 // TODO: point to the map page once it exists
 export const MAP_PAGE = "home.html";
 
@@ -5,6 +8,10 @@ export const MIN_PASSWORD_LENGTH = 8;
 
 export function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+export async function hasProfile(uid) {
+  return (await getDoc(doc(db, "users", uid))).exists();
 }
 
 export function friendlyError(code) {
@@ -16,13 +23,15 @@ export function friendlyError(code) {
     case "auth/invalid-email":
       return "Please enter a valid email address.";
     case "auth/email-already-in-use":
-      return "An account with this email already exists.";
+      return "That email already has an account. Try logging in instead.";
     case "auth/weak-password":
       return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
     case "auth/too-many-requests":
       return "Too many attempts. Please wait a moment and try again.";
     case "auth/network-request-failed":
       return "Network error. Check your connection and try again.";
+    case "permission-denied":
+      return "Your account was created, but we couldn't save your profile. Check your Firestore rules.";
     default:
       return "Something went wrong. Please try again.";
   }

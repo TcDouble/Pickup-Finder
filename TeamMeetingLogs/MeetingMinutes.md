@@ -1,1 +1,21 @@
-First Meeting: Discussed progress on wireframe and potential risks of firebase database, and future workload split.
+# Meeting Notes — Team 012-4
+Last edited: 
+- 2026-11-4 `<j01001000>`
+- 2026-10-28 `<julianrayon-collab>`
+
+## Week 12 — `November 4, 2026`
+
+### Agenda
+
+- Paul joined remotely. He's at a conference.
+- Discussed completion of login/registration, events database. Front end pages need to connect.
+- Plan for the week: unit testing, connecting pages and functionalities.
+- Designee for Canvas submissions: Jun
+
+---
+
+## Week 11 — `October 28, 2026`
+
+### Agenda
+
+- First Meeting: Discussed progress on wireframe and potential risks of firebase database, and future workload split.
