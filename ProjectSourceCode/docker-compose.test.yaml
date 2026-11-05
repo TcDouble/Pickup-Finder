@@ -1,0 +1,59 @@
+# Run the Lab 10 commands from ProjectSourceCode.
+name: pickup-finder-test
+
+services:
+  db-test:
+    image: postgres:17.6
+    env_file: .env.test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - test-db:/var/lib/postgresql/data
+      # Require the real project schema before initializing the test volume.
+      - type: bind
+        source: ./src/init_data
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind:
+          create_host_path: false
+
+  tests:
+    image: node:22.19.0-bookworm
+    working_dir: /repository
+    env_file: .env.test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    volumes:
+      - .:/repository
+      - test-node-modules:/repository/node_modules
+    command: ["npm", "test"]
+
+  firebase-tests:
+    profiles: [firebase]
+    build:
+      context: ./firebase
+      dockerfile_inline: |
+        FROM node:22-trixie-slim
+        RUN apt-get update \
+            && apt-get install -y --no-install-recommends openjdk-21-jre-headless \
+            && rm -rf /var/lib/apt/lists/*
+        WORKDIR /app
+        COPY package.json package-lock.json ./
+        RUN npm ci --include=dev --no-audit --no-fund
+        COPY firebase.json firestore.rules firestore.indexes.json events.js firebase-config.js ./
+        COPY tests/ ./tests/
+    environment:
+      CI: "true"
+    volumes:
+      - emulator-cache:/root/.cache/firebase/emulators
+    command: ["npm", "test"]
+
+volumes:
+  emulator-cache:
+  test-db:
+  test-node-modules:
