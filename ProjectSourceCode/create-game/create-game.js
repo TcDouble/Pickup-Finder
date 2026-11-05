@@ -139,7 +139,7 @@ form.addEventListener("submit", async (e) => {
     // message that's safe to show.
     const id = await createEvent({
       sportId,
-      title: form.title.value,
+      title: document.getElementById("title").value,
       description: form.description.value,
       skillLevel,
       startTime,
