@@ -42,7 +42,7 @@ form.date.value = [
 function showLoginNeeded() {
   message.classList.remove("ok");
   message.innerHTML =
-    'You need to be logged in to create a game. <a href="../login/login.html">Log in</a>';
+    'You need to be logged in to create a game. <a href="../login-and-registration/login.html">Log in</a>';
 }
 
 // Look up a place's coordinates with OpenStreetMap's free geocoder.
