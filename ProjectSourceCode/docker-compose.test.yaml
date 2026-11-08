@@ -1,47 +1,52 @@
-# Run the Lab 10 commands from ProjectSourceCode.
+# Lab 10 test stack, adapted for Firebase (approved by the TA): there is no
+# PostgreSQL. The `tests` service runs the Mocha suite (test/*.spec.js)
+# against the Firebase Auth and Firestore emulators inside the container,
+# which start empty on every run.
+#
+# Run from ProjectSourceCode (copy .env.test.example to .env.test first):
+#   docker compose -p lab10-tests -f docker-compose.test.yaml up --abort-on-container-exit --exit-code-from tests
+#   docker compose -p lab10-tests -f docker-compose.test.yaml down
+# `down --volumes` also clears the cached node_modules and emulator downloads.
 name: pickup-finder-test
 
 services:
-  db-test:
-    image: postgres:17.6
-    env_file: .env.test
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
-      interval: 2s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
-    volumes:
-      - test-db:/var/lib/postgresql/data
-      # Require the real project schema before initializing the test volume.
-      - type: bind
-        source: ./src/init_data
-        target: /docker-entrypoint-initdb.d
-        read_only: true
-        bind:
-          create_host_path: false
-
   tests:
-    image: node:22.19.0-bookworm
+    build:
+      # Nothing is copied into the image, so keep the build context tiny.
+      context: ./test
+      dockerfile_inline: |
+        # The Firebase emulators need Java 21, which Debian bookworm doesn't
+        # ship, so copy a Java 21 runtime into the lab's pinned Node image.
+        FROM eclipse-temurin:21-jre AS java
+        FROM node:22.19.0-bookworm
+        COPY --from=java /opt/java/openjdk /opt/java/openjdk
+        ENV JAVA_HOME=/opt/java/openjdk
+        ENV PATH=/opt/java/openjdk/bin:$PATH
     working_dir: /repository
     env_file: .env.test
-    depends_on:
-      db-test:
-        condition: service_healthy
+    environment:
+      CI: "true"
     volumes:
       - .:/repository
       - test-node-modules:/repository/node_modules
-    command: ["npm", "test"]
+      # Hide any node_modules installed on the host in firebase/, so the
+      # container only uses packages installed inside it.
+      - /repository/firebase/node_modules
+      - emulator-cache:/root/.cache/firebase/emulators
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npm test"]
 
+  # Optional: the events back end's own suite (node:test, 78 tests).
+  #   docker compose -f docker-compose.test.yaml --profile firebase up --build --abort-on-container-exit --exit-code-from firebase-tests firebase-tests
   firebase-tests:
     profiles: [firebase]
     build:
       context: ./firebase
       dockerfile_inline: |
-        FROM node:22-trixie-slim
-        RUN apt-get update \
-            && apt-get install -y --no-install-recommends openjdk-21-jre-headless \
-            && rm -rf /var/lib/apt/lists/*
+        FROM eclipse-temurin:21-jre AS java
+        FROM node:22.19.0-bookworm
+        COPY --from=java /opt/java/openjdk /opt/java/openjdk
+        ENV JAVA_HOME=/opt/java/openjdk
+        ENV PATH=/opt/java/openjdk/bin:$PATH
         WORKDIR /app
         COPY package.json package-lock.json ./
         RUN npm ci --include=dev --no-audit --no-fund
@@ -55,5 +60,4 @@ services:
 
 volumes:
   emulator-cache:
-  test-db:
   test-node-modules:

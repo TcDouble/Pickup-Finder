@@ -1,0 +1,60 @@
+// Creates an account and saves the profile. The registration page calls this;
+// the Lab 10 tests call it against the Firebase emulators.
+//
+// The caller passes in `auth` and `db` (from ../firebase/firebase-config.js on
+// the site, emulator instances in tests), so this file never picks a project.
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { validateRegistration } from "./validateRegistration.js";
+
+export class RegistrationError extends Error {
+  constructor(errors) {
+    super(errors[0]);
+    this.name = "RegistrationError";
+    this.code = "registration/invalid";
+    this.errors = errors;
+  }
+}
+
+/**
+ * Sign up, or finish the profile of someone already signed in.
+ *
+ * input: { displayName, email, password, confirm, city, sports }
+ * Returns { uid, profile } where profile is what was saved in users/{uid}.
+ * Throws RegistrationError (code "registration/invalid") before touching
+ * Firebase if the input is invalid, or a Firebase error (code "auth/...",
+ * "permission-denied", ...) if Firebase refuses.
+ *
+ * The password goes only to Firebase Auth, which stores it hashed. It is
+ * never written to Firestore.
+ */
+export async function registerUser({ auth, db }, input) {
+  const signedIn = auth.currentUser;
+  const { valid, errors, value } = validateRegistration(input, { needsCredentials: !signedIn });
+  if (!valid) throw new RegistrationError(errors);
+
+  // Create the auth user, unless an earlier attempt already did
+  const user =
+    signedIn ?? (await createUserWithEmailAndPassword(auth, value.email, input.password)).user;
+
+  // Set the display name on the auth profile
+  await updateProfile(user, { displayName: value.displayName });
+
+  // Save the profile in Firestore, keyed by the auth UID.
+  const profile = {
+    displayName: value.displayName,
+    email: user.email,
+    city: value.city,
+    sports: value.sports,
+  };
+  await setDoc(doc(db, "users", user.uid), { ...profile, createdAt: serverTimestamp() });
+
+  return { uid: user.uid, profile };
+}

@@ -1,2 +1,4 @@
 node_modules/
 /.env.test
+# Written by the Firebase emulators while tests run
+*-debug.log

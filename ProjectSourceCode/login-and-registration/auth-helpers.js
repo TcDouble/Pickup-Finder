@@ -1,14 +1,12 @@
 import { db } from "../firebase/firebase-config.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { MIN_PASSWORD_LENGTH, isValidEmail } from "./validateRegistration.js";
 
 // TODO: point to the map page once it exists
 export const MAP_PAGE = "home.html";
 
-export const MIN_PASSWORD_LENGTH = 8;
-
-export function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+// The sign-up rules live in validateRegistration.js so they can be unit tested.
+export { MIN_PASSWORD_LENGTH, isValidEmail };
 
 export async function hasProfile(uid) {
   return (await getDoc(doc(db, "users", uid))).exists();

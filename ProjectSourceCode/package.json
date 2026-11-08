@@ -1,0 +1,18 @@
+{
+  "name": "pickup-finder",
+  "private": true,
+  "type": "module",
+  "description": "Pickup-Finder web pages and the Lab 10 test suite (Mocha and Chai on the Firebase emulators)",
+  "scripts": {
+    "test": "firebase emulators:exec --config firebase/firebase.json --only auth,firestore --project demo-pickup-finder mocha",
+    "test:unit": "mocha --no-config test/validation.spec.js"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "3.0.4",
+    "chai": "4.5.0",
+    "chai-http": "4.4.0",
+    "firebase": "10.12.2",
+    "firebase-tools": "14.27.0",
+    "mocha": "10.8.2"
+  }
+}

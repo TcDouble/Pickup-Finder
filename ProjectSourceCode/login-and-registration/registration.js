@@ -1,15 +1,8 @@
 import { auth, db } from "../firebase/firebase-config.js";
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  updateProfile,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  doc,
-  setDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { MAP_PAGE, MIN_PASSWORD_LENGTH, friendlyError, hasProfile, isValidEmail } from "./auth-helpers.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { MAP_PAGE, friendlyError, hasProfile } from "./auth-helpers.js";
+import { validateRegistration } from "./validateRegistration.js";
+import { registerUser } from "./registerUser.js";
 
 const form = document.getElementById("register-form");
 const message = document.getElementById("message");
@@ -50,50 +43,33 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   showMessage("");
 
-  const displayName = form.displayName.value.trim();
-  const email = form.email.value.trim();
-  const password = form.password.value;
-  const confirm = form.confirm.value;
-  const city = form.city.value.trim();
-  const sports = [...form.querySelectorAll('input[name="sports"]:checked')].map(
-    (c) => c.value
-  );
+  const input = {
+    displayName: form.displayName.value,
+    email: form.email.value,
+    password: form.password.value,
+    confirm: form.confirm.value,
+    city: form.city.value,
+    sports: [...form.querySelectorAll('input[name="sports"]:checked')].map((c) => c.value),
+  };
 
-  // Client-side checks
-  if (!displayName) return showMessage("Enter a display name.");
-  if (!auth.currentUser) {
-    if (!email) return showMessage("Enter your email.");
-    if (!isValidEmail(email)) return showMessage("Please enter a valid email address.");
-    if (password.length < MIN_PASSWORD_LENGTH) return showMessage(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
-    if (password !== confirm) return showMessage("Passwords don't match.");
-  }
+  // Client-side checks (same rules registerUser applies)
+  const check = validateRegistration(input, { needsCredentials: !auth.currentUser });
+  if (!check.valid) return showMessage(check.errors[0]);
 
   submitting = true;
   submitBtn.disabled = true;
   submitBtn.textContent = "Saving…";
 
   try {
-    // Create the auth user, unless an earlier attempt already did
-    const user = auth.currentUser ?? (await createUserWithEmailAndPassword(auth, email, password)).user;
-
-    // Set the display name on the auth profile
-    await updateProfile(user, { displayName });
-
-    // Save the profile in Firestore, keyed by the auth UID.
-    //    Never store the password — Firebase Auth handles that.
-    await setDoc(doc(db, "users", user.uid), {
-      displayName,
-      email,
-      city,
-      sports,
-      createdAt: serverTimestamp(),
-    });
+    // Creates the auth user (unless an earlier attempt already did), sets the
+    // display name, and saves users/{uid}. The password never goes to Firestore.
+    await registerUser({ auth, db }, input);
 
     showMessage("Account created. Redirecting…", true);
     window.location.href = MAP_PAGE;
   } catch (err) {
     console.error(err);
-    showMessage(friendlyError(err.code));
+    showMessage(err.code === "registration/invalid" ? err.message : friendlyError(err.code));
     submitting = false;
     submitBtn.disabled = false;
     if (auth.currentUser) enterFinishMode(auth.currentUser);
