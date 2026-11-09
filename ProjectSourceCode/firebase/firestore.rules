@@ -142,5 +142,107 @@ service cloud.firestore {
       // Cancel instead of deleting, so players still see what happened.
       allow delete: if false;
     }
+
+    // ------------------------------------------------------------------
+    // Sportsmanship feedback (GitHub issue #13). See sportsmanship.js.
+    //
+    // feedback/{eventId}_{fromId}_{toId}: one rating from one player to
+    // another for one finished game. sportsmanship/{uid}: that player's
+    // running totals. Both are written together in one batch, and each
+    // rule checks the other document with getAfter(), so the totals always
+    // equal the number of feedback documents and nobody can add to them
+    // without leaving real feedback.
+    // ------------------------------------------------------------------
+
+    function eventDoc(eventId) {
+      return /databases/$(database)/documents/events/$(eventId);
+    }
+
+    function feedbackDoc(feedbackId) {
+      return /databases/$(database)/documents/feedback/$(feedbackId);
+    }
+
+    function sportsmanshipDoc(uid) {
+      return /databases/$(database)/documents/sportsmanship/$(uid);
+    }
+
+    match /feedback/{feedbackId} {
+
+      function feedbackFields() {
+        return ['eventId', 'sportId', 'fromId', 'toId', 'rating', 'comment', 'createdAt'];
+      }
+
+      // Keep in sync with RATINGS, MAX_COMMENT and FEEDBACK_WINDOW_DAYS in
+      // sportsmanship.js.
+      function validShape(f) {
+        return f.keys().hasAll(feedbackFields())
+          && f.keys().hasOnly(feedbackFields())
+          && f.eventId is string && f.fromId is string && f.toId is string
+          && feedbackId == f.eventId + '_' + f.fromId + '_' + f.toId
+          && f.rating in ['positive', 'negative']
+          && f.comment is string && f.comment.size() <= 300
+          && f.createdAt == request.time;
+      }
+
+      // You rate someone else, both of you played in the game, the game
+      // wasn't cancelled, and it ended within the last 14 days.
+      function playedTogether(f) {
+        let game = get(eventDoc(f.eventId)).data;
+        return game.status == 'scheduled'
+          && game.endTime < request.time
+          && request.time < game.endTime + duration.value(14, 'd')
+          && f.fromId in game.participantIds
+          && f.toId in game.participantIds
+          && f.sportId == game.sportId;
+      }
+
+      allow read: if signedIn();
+
+      // The document ID makes this one rating per rater, per player, per
+      // game: rating the same person again is an update, which is denied.
+      allow create: if signedIn()
+        && validShape(request.resource.data)
+        && request.resource.data.fromId == request.auth.uid
+        && request.resource.data.toId != request.auth.uid
+        && playedTogether(request.resource.data)
+        && getAfter(sportsmanshipDoc(request.resource.data.toId)).data.lastFeedbackId == feedbackId;
+
+      // Feedback is permanent, like eBay's: nobody can edit or remove it,
+      // including the person who got it.
+      allow update, delete: if false;
+    }
+
+    match /sportsmanship/{userId} {
+
+      // The only allowed write: add exactly one to the counter that matches
+      // a feedback document created in this same batch, for this player, by
+      // the signed-in user. lastFeedbackId points at that document.
+      function countsNewFeedback(positiveBefore, negativeBefore) {
+        let s = request.resource.data;
+        let fb = feedbackDoc(s.lastFeedbackId);
+        let f = getAfter(fb).data;
+        return s.keys().hasAll(['positive', 'negative', 'lastFeedbackId', 'updatedAt'])
+          && s.keys().hasOnly(['positive', 'negative', 'lastFeedbackId', 'updatedAt'])
+          && s.lastFeedbackId is string
+          && s.positive is int && s.negative is int
+          && s.updatedAt == request.time
+          && !exists(fb)
+          && existsAfter(fb)
+          && f.toId == userId
+          && f.fromId == request.auth.uid
+          && s.positive == positiveBefore + (f.rating == 'positive' ? 1 : 0)
+          && s.negative == negativeBefore + (f.rating == 'negative' ? 1 : 0);
+      }
+
+      // Public, so other players can see who's a good sport.
+      allow read: if signedIn();
+
+      // A player's first feedback creates the document.
+      allow create: if signedIn() && countsNewFeedback(0, 0);
+      allow update: if signedIn()
+        && countsNewFeedback(resource.data.positive, resource.data.negative);
+
+      allow delete: if false;
+    }
   }
 }

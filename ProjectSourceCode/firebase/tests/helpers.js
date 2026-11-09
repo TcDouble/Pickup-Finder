@@ -21,22 +21,30 @@ export function startTestEnv() {
   });
 }
 
-/** Load a copy of events.js signed in as a new emulator user. */
-export async function signedInAs(name) {
-  const tag = `${name}-${Math.random().toString(36).slice(2, 8)}`;
+// Copies of the app's modules for one user: events.js, sportsmanship.js, and
+// matchmaking.js, all sharing that user's emulator app.
+async function loadModules(tag) {
   const events = await import(`../events.js?as=${tag}`);
+  const sportsmanship = await import(`../sportsmanship.js?as=${tag}`);
+  const matchmaking = await import(`../matchmaking.js?as=${tag}`);
   const config = await import(`./emulator-config.js?as=${tag}`);
-  const cred = await createUserWithEmailAndPassword(config.auth, `${tag}@example.com`, "password123");
-  await updateProfile(cred.user, { displayName: name });
-  return { ...events, uid: cred.user.uid, app: config.app };
+  return { modules: { ...events, ...sportsmanship, ...matchmaking }, config };
 }
 
-/** A copy of events.js with nobody signed in. */
+/** Load a copy of the app's modules signed in as a new emulator user. */
+export async function signedInAs(name) {
+  const tag = `${name}-${Math.random().toString(36).slice(2, 8)}`;
+  const { modules, config } = await loadModules(tag);
+  const cred = await createUserWithEmailAndPassword(config.auth, `${tag}@example.com`, "password123");
+  await updateProfile(cred.user, { displayName: name });
+  return { ...modules, uid: cred.user.uid, app: config.app };
+}
+
+/** A copy of the app's modules with nobody signed in. */
 export async function signedOut() {
   const tag = `anon-${Math.random().toString(36).slice(2, 8)}`;
-  const events = await import(`../events.js?as=${tag}`);
-  const config = await import(`./emulator-config.js?as=${tag}`);
-  return { ...events, app: config.app };
+  const { modules, config } = await loadModules(tag);
+  return { ...modules, app: config.app };
 }
 
 export async function closeAll(users) {
