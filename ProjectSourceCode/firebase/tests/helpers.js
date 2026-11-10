@@ -21,14 +21,15 @@ export function startTestEnv() {
   });
 }
 
-// Copies of the app's modules for one user: events.js, sportsmanship.js, and
-// matchmaking.js, all sharing that user's emulator app.
+// Copies of the app's modules for one user: events.js, sportsmanship.js,
+// matchmaking.js, and notifications.js, all sharing that user's emulator app.
 async function loadModules(tag) {
   const events = await import(`../events.js?as=${tag}`);
   const sportsmanship = await import(`../sportsmanship.js?as=${tag}`);
   const matchmaking = await import(`../matchmaking.js?as=${tag}`);
+  const notifications = await import(`../notifications.js?as=${tag}`);
   const config = await import(`./emulator-config.js?as=${tag}`);
-  return { modules: { ...events, ...sportsmanship, ...matchmaking }, config };
+  return { modules: { ...events, ...sportsmanship, ...matchmaking, ...notifications }, config };
 }
 
 /** Load a copy of the app's modules signed in as a new emulator user. */
