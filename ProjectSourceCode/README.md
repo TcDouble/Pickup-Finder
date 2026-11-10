@@ -2,7 +2,7 @@
 
 **Owner:** Jun
 **Back end:** Firebase (Authentication and Cloud Firestore)
-**Status:** The `events` collection, sportsmanship ratings and matchmaking (GitHub issue #13), their security rules, and their tests are built ([`firebase/`](firebase/)). The rules and indexes haven't been deployed to the live project yet.
+**Status:** The `events` collection, sportsmanship ratings and matchmaking (GitHub issue #13), notification settings (issue #17), their security rules, and their tests are built ([`firebase/`](firebase/)), and so is the notifier server that sends the notifications ([`notifier/`](notifier/)). The rules and indexes haven't been deployed to the live project yet, and the notifier hasn't run against it.
 
 **Extra credit:** the [Risks](#risks) section at the end of this file is our submission for extra credit.
 
@@ -19,13 +19,14 @@
 
 ## Overview
 
-Pickup-Finder lets people post and join local pickup games. We use Firebase as the back end, and the pages talk to it directly, so there's no server of our own:
+Pickup-Finder lets people post and join local pickup games. We use Firebase as the back end, and the pages talk to it directly:
 
 - **Firebase Authentication** handles accounts, passwords, and staying logged in.
-- **Cloud Firestore** stores profiles (`users`), games (`events`, including who has RSVPed), and the feedback players leave each other after a game (`feedback` and `sportsmanship`).
+- **Cloud Firestore** stores profiles (`users`), games (`events`, including who has RSVPed), the feedback players leave each other after a game (`feedback` and `sportsmanship`), and notification settings and the notifications we've sent (`notificationSettings` and `notifications`).
 - **Security rules** ([`firebase/firestore.rules`](firebase/firestore.rules)) decide who can read and change what. Anyone can call Firestore from their browser, so the rules are what actually protect the data.
+- **The notifier** ([`notifier/`](notifier/)) is the one server we run: a small Node.js program in a Docker container that watches Firestore and sends match alerts, game reminders, and feedback requests by email, text message, and desktop notification, so players get them even when the site is closed.
 
-Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN and gets `app`, `auth`, and `db` from [`firebase/firebase-config.js`](firebase/firebase-config.js). Pages that deal with games use the functions in [`firebase/events.js`](firebase/events.js), and pages that deal with ratings use [`firebase/sportsmanship.js`](firebase/sportsmanship.js) and [`firebase/matchmaking.js`](firebase/matchmaking.js), instead of calling Firestore themselves.
+Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN and gets `app`, `auth`, and `db` from [`firebase/firebase-config.js`](firebase/firebase-config.js). Pages that deal with games use the functions in [`firebase/events.js`](firebase/events.js), pages that deal with ratings use [`firebase/sportsmanship.js`](firebase/sportsmanship.js) and [`firebase/matchmaking.js`](firebase/matchmaking.js), and notification settings use [`firebase/notifications.js`](firebase/notifications.js), instead of calling Firestore themselves.
 
 ## Folder layout
 
@@ -37,12 +38,20 @@ ProjectSourceCode/
 │   ├── events.js                # games: create, RSVP, search
 │   ├── sportsmanship.js         # rating other players after a game
 │   ├── matchmaking.js           # suggesting games by sportsmanship score
+│   ├── notifications.js         # notification settings and the inbox
+│   ├── firebase-messaging-sw.js # shows desktop notifications while the site is closed
 │   ├── firestore.rules          # security rules for every collection
 │   ├── firestore.indexes.json   # indexes the game searches need
 │   ├── firebase.json            # Firebase CLI and emulator settings
 │   ├── package.json             # dev tools for tests and deploying
 │   ├── tests/                   # emulator tests for the modules and the rules
 │   └── README.md                # how the front end uses these modules
+├── notifier/                    # server that sends notifications (Node, Docker)
+│   ├── src/                     # the notifier itself
+│   ├── test/                    # its tests, on the emulators
+│   ├── Dockerfile, docker-compose.yaml
+│   ├── .env.example             # its settings: email and text accounts
+│   └── README.md                # how to set it up and run it
 ├── login-and-registration/      # login, registration, and home pages
 └── Prototyping/                 # wireframe and find-game prototype
 ```
@@ -111,6 +120,27 @@ Each player's running totals, created by their first feedback. Nobody writes thi
 
 The rules only allow adding exactly 1 to the counter that matches a feedback document created in the same write, so the totals always equal the number of feedback documents and nobody can raise their own. The public **sportsmanship score** (0 to 100) is computed from the totals, and **games played** is counted from `events`. Both are explained in [`firebase/README.md`](firebase/README.md).
 
+### `notificationSettings/{uid}`
+
+How and when each player wants to hear from us (GitHub issue #17), saved by `saveNotificationSettings` in [`firebase/notifications.js`](firebase/notifications.js). Players who never saved any get the defaults: reminders and feedback requests in the in-app inbox only.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `channels` | map | `email`, `sms`, `desktop`: true or false, all false at first. |
+| `phone` | string | For text messages, with country code. |
+| `desktopTokens` | array | Push tokens for up to 5 browsers. |
+| `gameReminders`, `feedbackReminders` | boolean | An hour before each game, and after each game to rate the players. On at first. |
+| `matchAlerts` | map | Sports, area, skill level, and lowest sportsmanship score for new-game alerts. No sports means no alerts. |
+| `updatedAt` | timestamp | |
+
+Rules: **private**. Only the player can read or change their settings, and they must pass the same checks as `notifications.js` (texts need a phone number, desktop needs a browser that was set up).
+
+### `notifications/{id}`
+
+Every notification the notifier has sent, which is also each player's in-app inbox: who it's for (`uid`), the kind (`match`, `reminder`, or `feedback`), the game, the message and link, when it was sent and read, and what happened on each channel. The ID says what it's about (for example `reminder_<game>_<player>_<start time>`), so the same notification can't be sent twice.
+
+Rules: you can read only your own and mark them read. Only the notifier writes them, and nobody can delete them. The notifier's own bookkeeping is in `notifier/state`, which no browser can read. Details for both collections are in [`firebase/README.md`](firebase/README.md#notifications).
+
 ## Working with the database
 
 You need Node 20 or newer, and Java 21 or newer for the local emulators. Run these from `ProjectSourceCode/firebase/`:
@@ -124,6 +154,8 @@ You need Node 20 or newer, and Java 21 or newer for the local emulators. Run the
 
 **Deploying the rules replaces all the rules in the project.** Any collection that isn't in `firestore.rules` becomes unreadable, so add a rule for each new collection before deploying, and run `npm test` first.
 
+The notifier has its own `npm test` and its own setup (a service account key and the email and text accounts). See [`notifier/README.md`](notifier/README.md).
+
 ## How Firebase covers the requirements
 
 These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requirement.txt).
@@ -134,13 +166,13 @@ These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requ
 | Database with user info | `users` collection | Built |
 | Passwords hashed before storage | Firebase Authentication hashes passwords (with scrypt) and never gives them back. We never store a password ourselves. | Built |
 | Sessions: login, logout, stay logged in | Firebase Authentication keeps the user signed in across page loads and refreshes their login token. `signOut` logs out. | Built |
-| A server connecting UI to Database | Firebase plays this role: the SDK talks to Firestore, and the security rules enforce what a server would. We don't run a server of our own. | Check with the TA ([Risk 1](#1-firebase-might-not-meet-the-server-and-docker-requirements)) |
-| Built and run in Docker containers | Not covered yet | Open ([Risk 1](#1-firebase-might-not-meet-the-server-and-docker-requirements)) |
+| A server connecting UI to Database | Firebase plays this role: the SDK talks to Firestore, and the security rules enforce what a server would. The notifier ([`notifier/`](notifier/)) is a Node.js server of our own that connects the database to email, text messages, and desktop notifications, but the pages still don't go through it. | Partly built ([Risk 1](#1-firebase-might-not-meet-the-server-and-docker-requirements)) |
+| Built and run in Docker containers | The notifier runs in a Docker container ([`notifier/docker-compose.yaml`](notifier/docker-compose.yaml)), and the tests run in containers ([`docker-compose.test.yaml`](docker-compose.test.yaml)). The pages aren't served from a container yet. | Partly built ([Risk 1](#1-firebase-might-not-meet-the-server-and-docker-requirements)) |
 | Database with event info | `events` collection | Built |
 | Map integration | Each game stores `lat` and `lng`, and `listEvents` finds games inside the map's view or within a distance | Built |
 | Real-time updates | `watchEvents` and `watchEvent` update the page as soon as a game changes | Built |
 | Media storage for profile and event images | Would use Cloud Storage, with the image URL saved on the profile or game | Not started |
-| Notifications | Not designed yet | Not started |
+| Notifications | Match alerts, a reminder an hour before each game, and a request to rate the players after it, by email, text message, or desktop notification, whichever the player chooses ([`firebase/notifications.js`](firebase/notifications.js) and [`notifier/`](notifier/), GitHub issue #17). No settings page or inbox page yet. | Built (back end) |
 | Removing past events and enforcing other rules | The security rules enforce the player limit and host-only edits. Searches only return games that haven't started, so past games drop off the map. Nothing deletes old games yet. | Partly built |
 | User info only editable by its owner | The `users` rule only lets you write your own profile | Built |
 
@@ -152,7 +184,7 @@ These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requ
 - **Fixed lists** (sports and skill levels) are in both `events.js` and `firestore.rules`. Change both, or the rules will reject the new value.
 - **Changing a field** means changing `events.js`, `firestore.rules`, the tests, and the tables in this file and in `firebase/README.md`. See "Changing the data model" in [`firebase/README.md`](firebase/README.md).
 - **Security:** anything that matters is checked in the rules, not only in the page. A user's ID always comes from `auth.currentUser`, never from a form field or the URL.
-- **Secrets:** the `apiKey` in `firebase-config.js` only identifies our project and is safe to commit. Never commit a service account key or any other credential file.
+- **Secrets:** the `apiKey` in `firebase-config.js` and `VAPID_KEY` in `notifications.js` are public and safe to commit. Never commit a service account key or any other credential file, including the notifier's `service-account.json` and `.env` (both are in its `.gitignore`).
 
 ## Optional features
 
@@ -231,7 +263,7 @@ If we build skill ratings later, the same "average close to mine" sort works for
 
 > **Note:** This section is our submission for extra credit.
 
-These are the risks we see for the database part of Pickup-Finder, first written on November 3, 2026, after the team chose Firebase, and updated on November 8, 2026, when sportsmanship ratings were added. Severity is how much damage a risk would do if it happened:
+These are the risks we see for the database part of Pickup-Finder, first written on November 3, 2026, after the team chose Firebase, and updated on November 8, 2026, when sportsmanship ratings were added, and on November 10, 2026, when notifications were added. Severity is how much damage a risk would do if it happened:
 
 - **High:** we could miss a course requirement, expose users' data, or block the rest of the team.
 - **Medium:** it costs days of rework or breaks a feature, but there's a workaround.
@@ -239,7 +271,7 @@ These are the risks we see for the database part of Pickup-Finder, first written
 
 | # | Risk | Severity | Status |
 | --- | --- | --- | --- |
-| 1 | [Firebase might not meet the server and Docker requirements](#1-firebase-might-not-meet-the-server-and-docker-requirements) | High | Open |
+| 1 | [Firebase might not meet the server and Docker requirements](#1-firebase-might-not-meet-the-server-and-docker-requirements) | High | Partly handled |
 | 2 | [Users' data gets exposed or changed by the wrong person](#2-users-data-gets-exposed-or-changed-by-the-wrong-person) | High | Partly handled |
 | 3 | [The data model doesn't match the wireframe or the pages](#3-the-data-model-doesnt-match-the-wireframe-or-the-pages) | Medium | Open |
 | 4 | [Everyone shares one live database](#4-everyone-shares-one-live-database) | Medium | Partly handled |
@@ -249,16 +281,18 @@ These are the risks we see for the database part of Pickup-Finder, first written
 | 8 | [Two players take the last spot in a game](#8-two-players-take-the-last-spot-in-a-game) | Medium | Handled |
 | 9 | [Dates and times come out wrong](#9-dates-and-times-come-out-wrong) | Low | Partly handled |
 | 10 | [Sportsmanship ratings get gamed or misused](#10-sportsmanship-ratings-get-gamed-or-misused) | Medium | Partly handled |
+| 11 | [Notifications spam people, cost money, or leak phone numbers](#11-notifications-spam-people-cost-money-or-leak-phone-numbers) | Medium | Partly handled |
 
 ### 1. Firebase might not meet the server and Docker requirements
 
-**Severity: High · Status: Open**
+**Severity: High · Status: Partly handled**
 
-The course requirements include "a server connecting UI to Database" and "built and run in docker containers". With Firebase, the pages talk to Firestore directly and we don't run a server or any containers. If the graders read these requirements literally, we could lose points late in the project, when it's hardest to add a server.
+The course requirements include "a server connecting UI to Database" and "built and run in docker containers". With Firebase, the pages talk to Firestore directly. If the graders read these requirements literally, we could lose points late in the project, when it's hardest to add a server.
 
 Mitigation:
 
-- Ask the TA at the next weekly meeting whether Firebase counts as the server and database, and write the answer in the meeting minutes.
+- Since November 10, 2026, the notifier ([`notifier/`](notifier/)) is a Node.js server of ours that runs in a Docker container and connects the database to email, text messages, and desktop notifications. The tests also run in containers ([`docker-compose.test.yaml`](docker-compose.test.yaml)). That covers part of both requirements, but the pages still don't go through a server and aren't served from a container.
+- Ask the TA at the next weekly meeting whether Firebase plus the notifier counts as the server and database, and write the answer in the meeting minutes.
 - If it doesn't count, the smallest fix is a small Node/Express server in a Docker container that serves the pages in `ProjectSourceCode/`, plus a `docker-compose.yml` that starts it. The pages and Firestore code stay the same.
 - The Firebase emulators can also run in a container for local development, which would cover Docker for the database side.
 
@@ -314,7 +348,7 @@ Mitigation:
 
 **Severity: Medium · Status: Open**
 
-On top of the class requirements, our scope adds real-time updates, notifications, and image uploads, and we've talked about a friends list, skill ratings, and a waitlist ([designs](#optional-features)). Sportsmanship ratings and matchmaking are built on the database side, but no page uses them yet. Each one adds fields, rules, and tests. If we start them early, the required features (login, registration, and creating and joining games) might not be solid by the checkpoint.
+On top of the class requirements, our scope adds real-time updates, notifications, and image uploads, and we've talked about a friends list, skill ratings, and a waitlist ([designs](#optional-features)). Sportsmanship ratings, matchmaking, and notifications are built on the back end, but no page uses them yet. Each one adds fields, rules, and tests. If we start them early, the required features (login, registration, and creating and joining games) might not be solid by the checkpoint.
 
 Mitigation:
 
@@ -369,3 +403,18 @@ Mitigation:
 - The score starts every player with 3 extra positive ratings, so a single unfair negative only drops a new player to 75.
 - Profiles show the number of ratings and games played next to the score, so a high score from very few games stands out.
 - Not handled yet: reporting a comment, and a way for the team to hide one (through the Firebase console for now). If farming becomes a problem, count only one rating per pair of players per week.
+
+### 11. Notifications spam people, cost money, or leak phone numbers
+
+**Severity: Medium · Status: Partly handled**
+
+Notifications reach people outside the site, so mistakes are more visible and harder to take back. A bug or a busy area could flood someone with match alerts. Someone could type another person's phone number and opt them into texts. Text messages cost money after Twilio's free trial. And the notifier uses a service account key that can read and change everything in the database, including every player's phone number.
+
+Mitigation:
+
+- Nobody gets email, texts, or desktop notifications until they turn that channel on. Match alerts stay off until a player picks sports, and the notifier sends at most 3 a day to one player.
+- Each notification is saved under an ID made from the game, the player, and the kind before it's sent, so restarts and repeated passes never send the same one twice. The tests check this.
+- Settings, including phone numbers, are private to their owner by the rules. Emails only go to the address on the player's Firebase account, which they can't change in the settings.
+- Twilio's free trial only texts numbers verified in the Twilio console, which also stops texts to strangers during the demo. If we ever pay for texts, verify each phone number with a code first and set a spending limit in Twilio.
+- Keep `service-account.json` and `.env` out of git (they're in the notifier's `.gitignore`), and only on the machine that runs the notifier. If the key leaks, delete it in the Google Cloud console.
+- Not handled yet: retrying a message that failed (it's recorded as `failed` in the notification), and a settings page, so for now players can only change settings through `notifications.js`.

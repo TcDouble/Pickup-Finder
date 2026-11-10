@@ -1,8 +1,8 @@
 // Node module hook used only by the tests.
 //
-// events.js, sportsmanship.js, and matchmaking.js import Firestore from the
-// gstatic CDN (like the rest of the site) and get `db`/`auth` from
-// ./firebase-config.js, which points at the real project. In tests we swap both:
+// events.js and the other app modules import Firestore from the gstatic CDN
+// (like the rest of the site) and get `db`/`auth` from ./firebase-config.js,
+// which points at the real project. In tests we swap both:
 //   - CDN URLs -> the same version from npm (firebase@10.12.2)
 //   - ./firebase-config.js -> tests/emulator-config.js, connected to the emulators
 //
