@@ -47,10 +47,10 @@ export async function registerUser({ auth, db }, input) {
   // Set the display name on the auth profile
   await updateProfile(user, { displayName: value.displayName });
 
-  // Save the profile in Firestore, keyed by the auth UID.
+  // Save the profile in Firestore, keyed by the auth UID. Other players can read
+  // profiles, so the email stays in Firebase Auth only.
   const profile = {
     displayName: value.displayName,
-    email: user.email,
     city: value.city,
     sports: value.sports,
   };

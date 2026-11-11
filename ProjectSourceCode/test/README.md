@@ -41,10 +41,10 @@ Email and password are skipped when someone who is already signed in is only
 finishing their profile.
 
 **Success**: returns `{ uid, profile }`, where `profile` is
-`{ displayName, email, city, sports }` with text trimmed. It creates one
-Firebase Auth account (which stores the password hashed) and one Firestore
-document at `users/{uid}` with those fields plus `createdAt`. The password is
-never written to Firestore.
+`{ displayName, city, sports }` with text trimmed. It creates one
+Firebase Auth account (which stores the email and the hashed password) and one
+Firestore document at `users/{uid}` with those fields plus `createdAt`. The
+password and email are never written to Firestore.
 
 **Failure**:
 

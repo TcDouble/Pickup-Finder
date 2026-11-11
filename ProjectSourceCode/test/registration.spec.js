@@ -63,19 +63,19 @@ describe("registerUser (sign-up on the Firebase emulators)", () => {
     expect(result.uid).to.be.a("string").that.is.not.empty;
     expect(result.profile).to.deep.equal({
       displayName: "Riley",
-      email,
       city: "Boulder",
       sports: ["basketball", "soccer"],
     });
 
-    // Exactly one matching profile, with the right fields
-    const profiles = await findDocs(testEnv, "users", "email", email);
+    // Exactly one matching profile, with the right fields and no email
+    const profiles = await findDocs(testEnv, "users", "displayName", "Riley");
     expect(profiles).to.have.lengthOf(1);
     const [profile] = profiles;
     expect(profile.id).to.equal(result.uid);
-    expect(profile).to.include({ displayName: "Riley", email, city: "Boulder" });
+    expect(profile).to.include({ displayName: "Riley", city: "Boulder" });
     expect(profile.sports).to.deep.equal(["basketball", "soccer"]);
     expect(profile.createdAt.toDate()).to.be.an.instanceOf(Date);
+    expect(profile).to.not.have.property("email");
 
     // Exactly one matching Auth account, the same user
     const accounts = await findAuthUsers(email);
@@ -107,7 +107,7 @@ describe("registerUser (sign-up on the Firebase emulators)", () => {
     expect(err.message).to.equal("Enter a password.");
 
     // Nothing was saved, and nobody is signed in
-    expect(await findDocs(testEnv, "users", "email", email)).to.have.lengthOf(0);
+    expect(await findDocs(testEnv, "users", "displayName", "Sam")).to.have.lengthOf(0);
     expect(await findAuthUsers(email)).to.have.lengthOf(0);
     expect(site.auth.currentUser).to.equal(null);
   });

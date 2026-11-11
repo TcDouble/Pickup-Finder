@@ -50,10 +50,11 @@ ProjectSourceCode/
 
 One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`login-and-registration/registration.js`](login-and-registration/registration.js)) creates it. Paul and Julian own this collection.
 
+Any signed-in player can read any profile (to show names next to games), so don't put private data here. The email address stays in Firebase Authentication only.
+
 | Field | Type | Notes |
 | --- | --- | --- |
 | `displayName` | string | Also saved on the Auth account. |
-| `email` | string | |
 | `city` | string | |
 | `sports` | array | Sport IDs, such as `basketball`. Same list as `SPORTS` in `events.js`. |
 | `createdAt` | timestamp | Set by the server. |
@@ -162,13 +163,13 @@ Mitigation:
 
 **Severity: High · Status: Partly handled**
 
-Anyone can open the browser console and call Firestore with their own login, so the page's checks don't protect anything. Only the security rules do. If the live project is still on the console's "test mode" rules, anyone can read or overwrite every profile and game, and test mode also expires after 30 days, after which every read fails. Under our current `users` rule, any signed-in user can read every profile, including email addresses.
+Anyone can open the browser console and call Firestore with their own login, so the page's checks don't protect anything. Only the security rules do. If the live project is still on the console's "test mode" rules, anyone can read or overwrite every profile and game, and test mode also expires after 30 days, after which every read fails. Under our current `users` rule, any signed-in user can read every profile, so profiles no longer store email addresses (they stay in Firebase Authentication).
 
 Mitigation:
 
 - Deploy `firestore.rules` to replace test mode, as described in [Working with the database](#working-with-the-database).
 - The rules tests in `firebase/tests/rules.test.js` try the attacks directly: editing someone else's game, RSVPing another person, going over the player limit, and writing someone else's profile. Run `npm test` before every deploy.
-- Have the profile team tighten the `users` rule, for example by keeping email in a private document only its owner can read, and by checking each field's type and length.
+- Have the profile team tighten the `users` rule by checking each field's type and length.
 - Never commit a service account key. If one is ever committed, delete the key in the Google Cloud console, because removing the file doesn't remove it from git history.
 
 ### 3. The data model doesn't match the wireframe or the pages
