@@ -6,121 +6,27 @@
   <title>Create a pickup game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --court: #1f4d3a;
-      --court-dark: #153629;
-      --line: #f2efe6;
-      --ink: #1b1f1d;
-      --muted: #5d6762;
-      --field: #ffffff;
-      --border: #c9cfca;
-      --error: #b3261e;
-      --bg: #eef1ee;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Barlow", system-ui, sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-    }
-    .card {
-      width: 100%;
-      max-width: 480px;
-      background: var(--field);
-      border: 2px solid var(--court);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    header {
-      background: var(--court);
-      color: var(--line);
-      padding: 24px 28px 20px;
-      background-image: radial-gradient(circle at 100% 0, transparent 38px, var(--court-dark) 39px, var(--court-dark) 41px, transparent 42px);
-    }
-    h1 {
-      font-family: "Barlow Condensed", sans-serif;
-      font-weight: 700;
-      font-size: 2rem;
-      margin: 0 0 4px;
-      letter-spacing: 0.01em;
-    }
-    header p { margin: 0; opacity: 0.85; }
-    form { padding: 24px 28px 28px; display: grid; gap: 16px; }
-    label, legend { font-weight: 500; font-size: 0.95rem; }
-    .field { display: grid; gap: 6px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .row.three { grid-template-columns: 1.3fr 1fr 1fr; }
-    @media (max-width: 420px) { .row, .row.three { grid-template-columns: 1fr; } }
-    input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
-      font: inherit;
-      padding: 10px 12px;
-      border: 1.5px solid var(--border);
-      border-radius: 4px;
-      background: #fff;
-      width: 100%;
-    }
-    textarea { resize: vertical; min-height: 72px; }
-    input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
-      outline: 3px solid #e8b100;
-      outline-offset: 1px;
-    }
-    .hint { font-size: 0.85rem; color: var(--muted); }
-    fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    .chips label {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 999px;
-      cursor: pointer; font-weight: 400;
-    }
-    .chips input { accent-color: var(--court); }
-    .chips label:has(input:checked) { border-color: var(--court); background: #e3ece6; }
-    .locate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    button.secondary {
-      font: inherit; font-size: 0.9rem; font-weight: 500;
-      padding: 7px 12px; border: 1.5px solid var(--court); border-radius: 4px;
-      background: #fff; color: var(--court); cursor: pointer;
-    }
-    button.secondary:hover { background: #e3ece6; }
-    #coords { font-size: 0.85rem; color: var(--muted); }
-    #coords.set { color: var(--court); font-weight: 500; }
-    button[type="submit"] {
-      font-family: "Barlow Condensed", sans-serif;
-      font-size: 1.2rem; font-weight: 700; letter-spacing: 0.02em;
-      padding: 12px; border: 0; border-radius: 4px;
-      background: var(--court); color: var(--line); cursor: pointer;
-    }
-    button[type="submit"]:hover { background: var(--court-dark); }
-    button[disabled] { opacity: 0.6; cursor: progress; }
-    #message { min-height: 1.2em; font-size: 0.92rem; color: var(--error); margin: 0; }
-    #message.ok { color: var(--court); }
-    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/style.css" />
 </head>
-<body>
-  <main class="card">
-    <header>
+<body class="centered">
+  <main class="card wide">
+    <header class="card-header">
       <h1>Create a game</h1>
       <p>Set up a pickup game so players nearby can find it and join.</p>
     </header>
 
-    <form id="game-form" novalidate>
+    <form id="game-form" class="card-body" novalidate>
       <!-- Sport (event title: "Pickup Basketball") -->
       <fieldset>
         <legend>Sport</legend>
         <div class="chips">
-          <label><input type="radio" name="sport" value="basketball" checked /> Basketball</label>
-          <label><input type="radio" name="sport" value="soccer" /> Soccer</label>
-          <label><input type="radio" name="sport" value="volleyball" /> Volleyball</label>
-          <label><input type="radio" name="sport" value="tennis" /> Tennis</label>
-          <label><input type="radio" name="sport" value="pickleball" /> Pickleball</label>
-          <label><input type="radio" name="sport" value="football" /> Football</label>
+          <label class="chip"><input type="radio" name="sport" value="basketball" checked /> Basketball</label>
+          <label class="chip"><input type="radio" name="sport" value="soccer" /> Soccer</label>
+          <label class="chip"><input type="radio" name="sport" value="volleyball" /> Volleyball</label>
+          <label class="chip"><input type="radio" name="sport" value="tennis" /> Tennis</label>
+          <label class="chip"><input type="radio" name="sport" value="pickleball" /> Pickleball</label>
+          <label class="chip"><input type="radio" name="sport" value="football" /> Football</label>
         </div>
       </fieldset>
 
@@ -139,14 +45,14 @@
         <label for="address">Address <span class="hint">(optional, helps us find it)</span></label>
         <input id="address" type="text" maxlength="200" autocomplete="street-address" placeholder="e.g. 1600 Pleasant St, Boulder, CO" />
         <div class="locate">
-          <button type="button" class="secondary" id="find-place">Find this place</button>
-          <button type="button" class="secondary" id="use-location">Use my location</button>
-          <span id="coords" aria-live="polite">Not placed on the map yet.</span>
+          <button type="button" class="btn small" id="find-place">Find this place</button>
+          <button type="button" class="btn small" id="use-location">Use my location</button>
+          <span id="coords" class="coords" aria-live="polite">Not placed on the map yet.</span>
         </div>
       </div>
 
       <!-- When -->
-      <div class="row three">
+      <div class="grid-3">
         <div class="field">
           <label for="date">Date</label>
           <input id="date" type="date" required />
@@ -172,8 +78,8 @@
       <fieldset>
         <legend>Level</legend>
         <div class="chips">
-          <label><input type="radio" name="level" value="casual" checked /> Casual</label>
-          <label><input type="radio" name="level" value="competitive" /> Competitive</label>
+          <label class="chip"><input type="radio" name="level" value="casual" checked /> Casual</label>
+          <label class="chip"><input type="radio" name="level" value="competitive" /> Competitive</label>
         </div>
       </fieldset>
 
@@ -183,8 +89,8 @@
         <textarea id="description" maxlength="500" placeholder="e.g. Bring a light and dark shirt."></textarea>
       </div>
 
-      <p id="message" role="alert" aria-live="polite"></p>
-      <button type="submit" id="submit-btn">Create game</button>
+      <p id="message" class="message" role="alert" aria-live="polite"></p>
+      <button type="submit" id="submit-btn" class="btn primary big">Create game</button>
     </form>
   </main>
 

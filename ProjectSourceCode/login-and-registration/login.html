@@ -4,26 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log in - PickupFinder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
 </head>
-<body>
-  <h1>PickupFinder</h1>
-  <h2>Log in</h2>
+<body class="centered">
+  <main class="card">
+    <header class="card-header">
+      <h1>PickupFinder</h1>
+      <p>Log in to find and host pickup games.</p>
+    </header>
 
-  <form id="login-form" novalidate>
-    <p>
-      <label for="email">Email</label><br>
-      <input type="email" id="email" autocomplete="email">
-    </p>
-    <p>
-      <label for="password">Password</label><br>
-      <input type="password" id="password" autocomplete="current-password">
-    </p>
-    <p id="error" style="color: red;"></p>
-    <button type="submit" id="login-btn">Log in</button>
-  </form>
+    <form id="login-form" class="card-body" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password">
+      </div>
+      <p id="error" class="message" role="alert" aria-live="polite"></p>
+      <button type="submit" id="login-btn" class="btn primary big">Log in</button>
 
-  <p>Don't have an account?</p>
-  <button type="button" onclick="location.href='registration.html'">Register</button>
+      <p class="alt">Don't have an account?</p>
+      <button type="button" class="btn" onclick="location.href='registration.html'">Register</button>
+    </form>
+  </main>
 
   <script type="module" src="login.js"></script>
 </body>

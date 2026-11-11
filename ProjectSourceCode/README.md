@@ -31,8 +31,13 @@ Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN
 ```text
 ProjectSourceCode/
 ├── README.md                    # this file
+├── assets/
+│   ├── style.css                # global styles every page links (CU gold, black, grays)
+│   └── no-profile-picture-icon.* # default profile picture
+├── create-game/                 # host-a-game page
 ├── firebase/
-│   ├── firebase-config.js       # shared setup: exports app, auth, db
+│   ├── firebase-config.js       # shared setup: exports app, auth, db, storage
+│   ├── storage.rules            # security rules for profile pictures
 │   ├── events.js                # games: create, RSVP, search
 │   ├── firestore.rules          # security rules for every collection
 │   ├── firestore.indexes.json   # indexes the game searches need
