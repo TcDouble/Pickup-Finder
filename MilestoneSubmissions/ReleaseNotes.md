@@ -40,14 +40,13 @@ Last edited:
 ### Planned for next week
 
 The checklist issue on the project board:
-- Connect Event Database to Frontend `https://github.com/TcDouble/Pickup-Finder/issues/11`
-- Connect User Database to Frontend `https://github.com/TcDouble/Pickup-Finder/issues/12`
-- Menu Interactivity/Filters `https://github.com/TcDouble/Pickup-Finder/issues/7`
-- Display events as pins on the map `https://github.com/TcDouble/Pickup-Finder/issues/19`
-- Be able to create an event `https://github.com/TcDouble/Pickup-Finder/issues/20`
-- Be able to edit an event `https://github.com/TcDouble/Pickup-Finder/issues/23`
 - Matchmaking and Sportsmanship Rating (review PR #25) `https://github.com/TcDouble/Pickup-Finder/issues/13`
 - Matchmaking Notifications `https://github.com/TcDouble/Pickup-Finder/issues/17`
+- Login and Register Page `https://github.com/TcDouble/Pickup-Finder/issues/4`
+- Be able to create an event `https://github.com/TcDouble/Pickup-Finder/issues/20`
+- User Database `https://github.com/TcDouble/Pickup-Finder/issues/5`
+- Menu Interactivity/Filters `https://github.com/TcDouble/Pickup-Finder/issues/7`
+- To be able to edit an event `https://github.com/TcDouble/Pickup-Finder/issues/23`
 
 ---
 
