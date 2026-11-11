@@ -5,6 +5,28 @@ Last edited:
 - 2026-11-3 `<j01001000>`
 - 2026-10-30 `<j01001000>`
 
+- Week 12 — November 11, 2026
+- ZHUCHEN PENG (KUHN114514)
+Added:
+
+Completed Lab 10 automated testing using Docker and Firebase Emulators.
+
+Verified that all 33 tests passed successfully in two consecutive runs.
+
+Tested user registration, profile pictures, Firebase security rules, and event creation.
+
+Demonstrated automated bug detection by intentionally introducing a password storage bug.
+
+Confirmed that the automated tests detected the bug (31 passing, 2 failing).
+
+Removed the bug and verified that all 33 tests passed again.
+
+Completed the Lab 10 UAT plan at milestones/uat-plan.md.
+
+Pending:
+
+TA review and final Canvas submission.
+
 ## Week 12 — `November 3, 2026`
 
 ### Added
