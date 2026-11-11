@@ -1,7 +1,7 @@
 # Lab 10 tests
 
 Automated tests for Pickup-Finder, written with Mocha and Chai and run against
-the Firebase Auth and Firestore emulators.
+the Firebase Auth, Firestore and Storage emulators.
 
 Lab 10 is written for an Express server with PostgreSQL and a `POST /register`
 route. Our app has no server: the pages talk to Firebase directly. The TA
@@ -15,16 +15,18 @@ requirement maps onto our app.
 | Positive `POST /register` test | `registerUser()`, the function the sign-up page calls, on the emulators | `registration.spec.js` |
 | Negative `POST /register` test (no password) | `registerUser()` with an empty password | `registration.spec.js` |
 | Test database whose name ends in `_test` | Emulators under the `demo-pickup-finder` project, which can't reach live Firebase | `emulator.js` |
+| Security rules for profile pictures | Every rule in `firebase/storage.rules`, tried as the owner, another user, and a signed-out visitor | `storage-rules.spec.js` |
 | Extra credit: positive and negative test for another feature | `createEvent()` (hosting a game): valid game, invalid player limit, signed-out visitor | `events.spec.js` |
 | `GET /welcome` test | Not needed: there is no server to greet | n/a |
 
 ## Registration contract
 
-The lab's `/register` route becomes `registerUser({ auth, db }, input)` in
+The lab's `/register` route becomes `registerUser({ auth, db, storage }, input)` in
 `login-and-registration/registerUser.js`. The registration page passes in the
-real `auth` and `db`; the tests pass emulator ones.
+real `auth`, `db` and `storage`; the tests pass emulator ones.
 
-**Input**: `{ displayName, email, password, confirm, city, sports }`
+**Input**: `{ photo, displayName, email, password, confirm, city, sports }`.
+`photo` is optional: a `File` (or anything with `type` and `size`), or `null`.
 
 **Checks** (`login-and-registration/validateRegistration.js`, in this order):
 
@@ -41,10 +43,12 @@ Email and password are skipped when someone who is already signed in is only
 finishing their profile.
 
 **Success**: returns `{ uid, profile }`, where `profile` is
-`{ displayName, city, sports }` with text trimmed. It creates one
+`{ displayName, photoURL, city, sports }` with text trimmed. It creates one
 Firebase Auth account (which stores the email and the hashed password) and one
 Firestore document at `users/{uid}` with those fields plus `createdAt`. The
-password and email are never written to Firestore.
+password and email are never written to Firestore. A picture is uploaded to
+Storage at `profilePictures/{uid}/avatar` and `photoURL` is its download URL;
+with no picture, `photoURL` is `null`.
 
 **Failure**:
 

@@ -9,6 +9,7 @@ Pickup games live in the Firestore `events` collection. Pages don't talk to that
 | `firebase-config.js` | Shared Firebase setup (Paul). `events.js` uses its `db` and `auth`. |
 | `events.js` | Create games, RSVP, and find games by sport, time, and location. |
 | `firestore.rules` | Security rules for `events` (and a minimal rule for `users`). |
+| `storage.rules` | Storage security rules: each user can upload only their own profile picture (`profilePictures/{uid}/avatar`). Tested in `../test/storage-rules.spec.js`. |
 | `firestore.indexes.json` | The composite indexes the event searches need. |
 | `firebase.json`, `.firebaserc` | Firebase CLI settings for deploying and for the local emulators. |
 | `tests/` | Tests that run `events.js` and the rules against the emulators. |

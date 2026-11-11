@@ -68,6 +68,18 @@
       outline-offset: 1px;
     }
     .hint { font-size: 0.85rem; color: var(--muted); }
+    .photo-row { display: flex; align-items: center; gap: 16px; }
+    .avatar {
+      width: 72px; height: 72px; flex: none;
+      border-radius: 50%; border: 2px solid var(--border);
+      object-fit: cover; background: #fff;
+    }
+    .photo-actions { display: grid; gap: 6px; min-width: 0; }
+    input[type="file"] { font: inherit; font-size: 0.9rem; max-width: 100%; }
+    .link-btn {
+      justify-self: start; padding: 0; border: 0; background: none;
+      font: inherit; font-size: 0.9rem; color: var(--court); text-decoration: underline; cursor: pointer;
+    }
     fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
     .sports { display: flex; flex-wrap: wrap; gap: 8px; }
     .sports label {
@@ -100,6 +112,18 @@
     </header>
 
     <form id="register-form" novalidate>
+      <div class="field">
+        <label for="photo">Profile picture (optional)</label>
+        <div class="photo-row">
+          <img id="photo-preview" class="avatar" src="../assets/no-profile-picture-icon.svg" alt="Your profile picture" width="72" height="72" />
+          <div class="photo-actions">
+            <input id="photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+            <button type="button" id="photo-remove" class="link-btn" hidden>Remove picture</button>
+            <span class="hint">PNG, JPEG, WebP or GIF, up to 2 MB.</span>
+          </div>
+        </div>
+      </div>
+
       <div class="field">
         <label for="displayName">Display name</label>
         <input id="displayName" type="text" autocomplete="nickname" maxlength="30" required />

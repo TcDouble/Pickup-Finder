@@ -55,6 +55,7 @@ Any signed-in player can read any profile (to show names next to games), so don'
 | Field | Type | Notes |
 | --- | --- | --- |
 | `displayName` | string | Also saved on the Auth account. |
+| `photoURL` | string or null | Download URL of the picture in Storage at `profilePictures/{uid}/avatar`, also saved on the Auth account. `null` means no picture: pages show [`assets/no-profile-picture-icon.svg`](assets/no-profile-picture-icon.svg) (`DEFAULT_PHOTO` in `auth-helpers.js`). |
 | `city` | string | |
 | `sports` | array | Sport IDs, such as `basketball`. Same list as `SPORTS` in `events.js`. |
 | `createdAt` | timestamp | Set by the server. |
@@ -110,7 +111,7 @@ These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requ
 | Database with event info | `events` collection | Built |
 | Map integration | Each game stores `lat` and `lng`, and `listEvents` finds games inside the map's view or within a distance | Built |
 | Real-time updates | `watchEvents` and `watchEvent` update the page as soon as a game changes | Built |
-| Media storage for profile and event images | Would use Cloud Storage, with the image URL saved on the profile or game | Not started |
+| Media storage for profile and event images | Profile pictures upload to Cloud Storage at registration, and the URL is saved on the profile. [`firebase/storage.rules`](firebase/storage.rules) lets only the owner write their picture (PNG, JPEG, WebP or GIF, up to 2 MB). Event images aren't done. | Partly built |
 | Notifications | Not designed yet | Not started |
 | Removing past events and enforcing other rules | The security rules enforce the player limit and host-only edits. Searches only return games that haven't started, so past games drop off the map. Nothing deletes old games yet. | Partly built |
 | User info only editable by its owner | The `users` rule only lets you write your own profile | Built |

@@ -5,12 +5,15 @@ import { readFileSync } from "node:fs";
 import { initializeApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator, setLogLevel } from "firebase/firestore";
+import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 
 // `firebase emulators:exec` sets these for the test process.
 export const PROJECT_ID = process.env.GCLOUD_PROJECT ?? "";
 const AUTH_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST;
 const FIRESTORE_HOST = process.env.FIRESTORE_EMULATOR_HOST;
+const STORAGE_HOST = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
+export const BUCKET = `${PROJECT_ID}.appspot.com`;
 
 // Denied writes are expected in some tests; don't print a warning for each one.
 setLogLevel("error");
@@ -21,7 +24,7 @@ setLogLevel("error");
  * project is a "demo-" project, which can never reach the live Firebase project.
  */
 export function assertTestProject() {
-  if (!AUTH_HOST || !FIRESTORE_HOST) {
+  if (!AUTH_HOST || !FIRESTORE_HOST || !STORAGE_HOST) {
     throw new Error("The Firebase emulators aren't running. Run the tests with `npm test`.");
   }
   if (!PROJECT_ID.startsWith("demo-")) {
@@ -37,19 +40,23 @@ function hostAndPort(value) {
 /** A Firebase app wired to the emulators, shaped like ../firebase/firebase-config.js. */
 export function emulatorApp(name) {
   assertTestProject();
-  const app = initializeApp({ projectId: PROJECT_ID, apiKey: "demo-key" }, name);
+  const app = initializeApp({ projectId: PROJECT_ID, apiKey: "demo-key", storageBucket: BUCKET }, name);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const storage = getStorage(app);
   connectAuthEmulator(auth, `http://${AUTH_HOST}`, { disableWarnings: true });
   const { host, port } = hostAndPort(FIRESTORE_HOST);
   connectFirestoreEmulator(db, host, port);
-  return { app, auth, db };
+  const storageAddr = hostAndPort(STORAGE_HOST);
+  connectStorageEmulator(storage, storageAddr.host, storageAddr.port);
+  return { app, auth, db, storage };
 }
 
-/** Admin access to the Firestore emulator (security rules bypassed only where asked). */
+/** Admin access to the Firestore and Storage emulators (security rules bypassed only where asked). */
 export function startTestEnv() {
   assertTestProject();
   const { host, port } = hostAndPort(FIRESTORE_HOST);
+  const storageAddr = hostAndPort(STORAGE_HOST);
   return initializeTestEnvironment({
     projectId: PROJECT_ID,
     firestore: {
@@ -57,7 +64,24 @@ export function startTestEnv() {
       port,
       rules: readFileSync(new URL("../firebase/firestore.rules", import.meta.url), "utf8"),
     },
+    storage: {
+      host: storageAddr.host,
+      port: storageAddr.port,
+      rules: readFileSync(new URL("../firebase/storage.rules", import.meta.url), "utf8"),
+    },
   });
+}
+
+/** Metadata of a Storage file read with rules off, or null if there's no such file. */
+export async function storedFile(testEnv, path) {
+  let meta = null;
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    meta = await ctx.storage(`gs://${BUCKET}`).ref(path).getMetadata().catch((err) => {
+      if (err.code === "storage/object-not-found") return null;
+      throw err;
+    });
+  });
+  return meta;
 }
 
 /** Every document in `collection` whose `field` equals `value`, read with rules off. */
