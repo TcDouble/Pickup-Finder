@@ -56,6 +56,8 @@ The checklist issue on the project board:
 
 - `<feature>` (#`<PR number>`, `<github-username>`)
 - Firebase Events Database. `<j01001000>`
+- Google Maps on the signed-in home page. `<KUHN114514>`
+- Create-game page that saves games to Firebase, built from a find-game page prototype. `<TcDouble>`
 
 ### Changed
 
