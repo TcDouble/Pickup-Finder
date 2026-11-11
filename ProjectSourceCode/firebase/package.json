@@ -4,6 +4,8 @@
   "type": "module",
   "description": "Firestore rules, indexes, and emulator tests for Pickup-Finder events",
   "scripts": {
+    "start": "node index.js",
+    "test:mocha": "mocha --timeout 10000 \"test/**/*.spec.js\"",
     "emulators": "firebase emulators:start --only auth,firestore --project demo-pickup-finder",
     "test": "firebase emulators:exec --only auth,firestore --project demo-pickup-finder \"node --import ./tests/register-loader.js --test --test-concurrency=1 tests/rules.test.js tests/events.test.js\"",
     "deploy:firestore": "firebase deploy --only firestore"

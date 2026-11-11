@@ -79,10 +79,10 @@ This UAT plan evaluates three major features of Pickup-Finder to determine wheth
 7. Open the application at:
 
    ```text
-   http://localhost:8000
+   http://localhost:8000/login-and-registration/registration.html
    ```
 
-8. Verify that the application is configured to use the local Firebase emulators before executing tests. Do not use production accounts or production data for UAT.
+8. Testers should use the live project with a throwaway email such as uat.*@example.text, which can be deleted and reused for further testing.
 
 ### Browser and Device
 
