@@ -52,7 +52,7 @@ document.querySelectorAll(".close-btn").forEach((btn) => {
 });
 
 // Activity chips toggle on and off (they don't filter anything yet).
-document.querySelectorAll(".chip").forEach((chip) => {
+document.querySelectorAll(".filters .chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     chip.setAttribute("aria-pressed", String(chip.getAttribute("aria-pressed") !== "true"));
   });

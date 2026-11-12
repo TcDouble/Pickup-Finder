@@ -2,10 +2,12 @@
   "name": "pickup-finder-firebase",
   "private": true,
   "type": "module",
-  "description": "Firestore rules, indexes, and emulator tests for Pickup-Finder events",
+  "description": "Firestore rules, indexes, and emulator tests for Pickup-Finder events, sportsmanship ratings, matchmaking, and notification settings",
   "scripts": {
+    "start": "node index.js",
+    "test:mocha": "mocha --timeout 10000 \"test/**/*.spec.js\"",
     "emulators": "firebase emulators:start --only auth,firestore --project demo-pickup-finder",
-    "test": "firebase emulators:exec --only auth,firestore --project demo-pickup-finder \"node --import ./tests/register-loader.js --test --test-concurrency=1 tests/rules.test.js tests/events.test.js\"",
+    "test": "firebase emulators:exec --only auth,firestore --project demo-pickup-finder \"node --import ./tests/register-loader.js --test --test-concurrency=1 tests/rules.test.js tests/events.test.js tests/sportsmanship-rules.test.js tests/sportsmanship.test.js tests/matchmaking.test.js tests/notifications-rules.test.js tests/notifications.test.js\"",
     "deploy:firestore": "firebase deploy --only firestore"
   },
   "devDependencies": {

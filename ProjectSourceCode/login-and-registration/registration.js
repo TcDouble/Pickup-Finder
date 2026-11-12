@@ -1,14 +1,18 @@
-import { auth, db } from "../firebase/firebase-config.js";
+import { auth, db, storage } from "../firebase/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { MAP_PAGE, friendlyError, hasProfile } from "./auth-helpers.js";
-import { validateRegistration } from "./validateRegistration.js";
+import { DEFAULT_PHOTO, MAP_PAGE, friendlyError, hasProfile } from "./auth-helpers.js";
+import { photoError, validateRegistration } from "./validateRegistration.js";
 import { registerUser } from "./registerUser.js";
 
 const form = document.getElementById("register-form");
 const message = document.getElementById("message");
 const submitBtn = document.getElementById("submit-btn");
+const photoInput = document.getElementById("photo");
+const photoPreview = document.getElementById("photo-preview");
+const photoRemove = document.getElementById("photo-remove");
 const signedInNote = document.getElementById("signed-in-note");
 let submitting = false;
+let previewURL = null;
 // Set when someone with a finished profile opens this page. Their account is
 // left alone; making a new one signs them out first.
 let signedInWithProfile = false;
@@ -17,6 +21,26 @@ function showMessage(text, ok = false) {
   message.textContent = text;
   message.classList.toggle("ok", ok);
 }
+
+function showPhoto(file) {
+  if (previewURL) URL.revokeObjectURL(previewURL);
+  previewURL = file ? URL.createObjectURL(file) : null;
+  photoPreview.src = previewURL ?? DEFAULT_PHOTO;
+  photoRemove.hidden = !file;
+}
+
+photoInput.addEventListener("change", () => {
+  const file = photoInput.files[0] ?? null;
+  const problem = photoError(file);
+  showMessage(problem ?? "");
+  if (problem) photoInput.value = "";
+  showPhoto(problem ? null : file);
+});
+
+photoRemove.addEventListener("click", () => {
+  photoInput.value = "";
+  showPhoto(null);
+});
 
 function enterFinishMode(user) {
   form.email.value = user.email;
@@ -62,6 +86,7 @@ form.addEventListener("submit", async (e) => {
   showMessage("");
 
   const input = {
+    photo: photoInput.files[0] ?? null,
     displayName: form.displayName.value,
     email: form.email.value,
     password: form.password.value,
@@ -87,9 +112,10 @@ form.addEventListener("submit", async (e) => {
       signedInNote.hidden = true;
     }
 
-    // Creates the auth user (unless an earlier attempt already did), sets the
-    // display name, and saves users/{uid}. The password never goes to Firestore.
-    await registerUser({ auth, db }, input);
+    // Creates the auth user (unless an earlier attempt already did), uploads the
+    // picture, sets the display name, and saves users/{uid}. The password never
+    // goes to Firestore.
+    await registerUser({ auth, db, storage }, input);
 
     showMessage("Account created. Redirecting…", true);
     window.location.href = MAP_PAGE;

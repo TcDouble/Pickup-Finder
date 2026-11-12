@@ -21,7 +21,7 @@ services:
         FROM node:22.19.0-bookworm
         COPY --from=java /opt/java/openjdk /opt/java/openjdk
         ENV JAVA_HOME=/opt/java/openjdk
-        ENV PATH=/opt/java/openjdk/bin:$PATH
+        ENV PATH=/opt/java/openjdk/bin:$$PATH
     working_dir: /repository
     env_file: .env.test
     environment:
@@ -35,7 +35,8 @@ services:
       - emulator-cache:/root/.cache/firebase/emulators
     command: ["sh", "-c", "npm ci --no-audit --no-fund && npm test"]
 
-  # Optional: the events back end's own suite (node:test, 78 tests).
+  # Optional: the back end's own suite (node:test): games, ratings,
+  # matchmaking, and notification settings.
   #   docker compose -f docker-compose.test.yaml --profile firebase up --build --abort-on-container-exit --exit-code-from firebase-tests firebase-tests
   firebase-tests:
     profiles: [firebase]
@@ -46,12 +47,37 @@ services:
         FROM node:22.19.0-bookworm
         COPY --from=java /opt/java/openjdk /opt/java/openjdk
         ENV JAVA_HOME=/opt/java/openjdk
-        ENV PATH=/opt/java/openjdk/bin:$PATH
+        ENV PATH=/opt/java/openjdk/bin:$$PATH
         WORKDIR /app
         COPY package.json package-lock.json ./
         RUN npm ci --include=dev --no-audit --no-fund
-        COPY firebase.json firestore.rules firestore.indexes.json events.js firebase-config.js ./
+        COPY firebase.json firestore.rules firestore.indexes.json *.js ./
         COPY tests/ ./tests/
+    environment:
+      CI: "true"
+    volumes:
+      - emulator-cache:/root/.cache/firebase/emulators
+    command: ["npm", "test"]
+
+  # Optional: the notifier's suite (node:test), which needs Java for the
+  # emulators like the others.
+  #   docker compose -f docker-compose.test.yaml --profile firebase up --build --abort-on-container-exit --exit-code-from notifier-tests notifier-tests
+  notifier-tests:
+    profiles: [firebase]
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM eclipse-temurin:21-jre AS java
+        FROM node:22.19.0-bookworm
+        COPY --from=java /opt/java/openjdk /opt/java/openjdk
+        ENV JAVA_HOME=/opt/java/openjdk
+        ENV PATH=/opt/java/openjdk/bin:$$PATH
+        WORKDIR /app/notifier
+        COPY notifier/package.json notifier/package-lock.json ./
+        RUN npm ci --include=dev --no-audit --no-fund
+        COPY firebase/firebase.json firebase/firestore.rules firebase/firestore.indexes.json ../firebase/
+        COPY notifier/src/ ./src/
+        COPY notifier/test/ ./test/
     environment:
       CI: "true"
     volumes:

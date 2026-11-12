@@ -1,70 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Register - PickupFinder</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="auth.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Create your account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/style.css" />
 </head>
-<body>
+<body class="centered">
   <main class="card">
-    <div class="brand">
-      <div class="brand-logo"></div>
-      <div class="brand-name">PickupFinder</div>
-    </div>
+    <header class="card-header">
+      <h1>Find your next game</h1>
+      <p>Create an account to join and host pickup games.</p>
+    </header>
 
-    <form id="register-form" novalidate>
-      <div class="heading">
-        <div class="eyebrow">Find your next game</div>
-        <h1>Create your account</h1>
-        <p class="subtitle">Join and host pickup games near you.</p>
-      </div>
-
+    <form id="register-form" class="card-body" novalidate>
       <p class="notice" id="signed-in-note" hidden></p>
 
       <div class="field">
+        <label for="photo">Profile picture (optional)</label>
+        <div class="photo-row">
+          <img id="photo-preview" class="avatar" src="../assets/no-profile-picture-icon.svg" alt="Your profile picture" width="80" height="80" />
+          <div class="photo-actions">
+            <input id="photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+            <button type="button" id="photo-remove" class="link-btn" hidden>Remove picture</button>
+            <span class="hint">PNG, JPEG, WebP or GIF, up to 2 MB.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
         <label for="displayName">Display name</label>
-        <input id="displayName" type="text" autocomplete="nickname" maxlength="30" required>
+        <input id="displayName" type="text" autocomplete="nickname" maxlength="30" required />
       </div>
 
       <div class="field">
         <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="email" required>
+        <input id="email" type="email" autocomplete="email" required />
       </div>
 
       <div class="field">
         <label for="password">Password</label>
-        <input id="password" type="password" autocomplete="new-password" minlength="8" required>
+        <input id="password" type="password" autocomplete="new-password" minlength="8" required />
         <span class="hint">At least 8 characters.</span>
       </div>
 
       <div class="field">
         <label for="confirm">Confirm password</label>
-        <input id="confirm" type="password" autocomplete="new-password" required>
+        <input id="confirm" type="password" autocomplete="new-password" required />
       </div>
 
       <div class="field">
         <label for="city">City</label>
-        <input id="city" type="text" autocomplete="address-level2">
+        <input id="city" type="text" autocomplete="address-level2" />
       </div>
 
       <fieldset>
         <legend>Sports you play</legend>
         <div class="chips">
-          <label><input type="checkbox" name="sports" value="basketball">Basketball</label>
-          <label><input type="checkbox" name="sports" value="soccer">Soccer</label>
-          <label><input type="checkbox" name="sports" value="volleyball">Volleyball</label>
-          <label><input type="checkbox" name="sports" value="tennis">Tennis</label>
-          <label><input type="checkbox" name="sports" value="pickleball">Pickleball</label>
-          <label><input type="checkbox" name="sports" value="football">Football</label>
+          <label class="chip"><input type="checkbox" name="sports" value="basketball" /> Basketball</label>
+          <label class="chip"><input type="checkbox" name="sports" value="soccer" /> Soccer</label>
+          <label class="chip"><input type="checkbox" name="sports" value="volleyball" /> Volleyball</label>
+          <label class="chip"><input type="checkbox" name="sports" value="tennis" /> Tennis</label>
+          <label class="chip"><input type="checkbox" name="sports" value="pickleball" /> Pickleball</label>
+          <label class="chip"><input type="checkbox" name="sports" value="football" /> Football</label>
         </div>
       </fieldset>
 
       <p id="message" class="message" role="alert" aria-live="polite"></p>
-      <button type="submit" class="btn dark" id="submit-btn">Create account</button>
+      <button type="submit" id="submit-btn" class="btn primary big">Create account</button>
       <p class="alt">Already have an account? <a href="login.html">Log in</a></p>
     </form>
   </main>

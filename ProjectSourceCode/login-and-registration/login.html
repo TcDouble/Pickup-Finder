@@ -7,38 +7,31 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="../assets/style.css">
 </head>
-<body>
+<body class="centered">
   <main class="card">
-    <div class="brand">
-      <div class="brand-logo"></div>
-      <div class="brand-name">PickupFinder</div>
-    </div>
+    <header class="card-header">
+      <h1>PickupFinder</h1>
+      <p>Log in to find and host pickup games.</p>
+    </header>
 
-    <form id="login-form" novalidate>
-      <div class="heading">
-        <div class="eyebrow">Welcome back</div>
-        <h1>Log in</h1>
-      </div>
-
+    <form id="login-form" class="card-body" novalidate>
       <p class="notice" id="signed-in-note" hidden></p>
 
       <div class="field">
         <label for="email">Email</label>
         <input type="email" id="email" autocomplete="email">
       </div>
-
       <div class="field">
         <label for="password">Password</label>
         <input type="password" id="password" autocomplete="current-password">
       </div>
-
       <p id="error" class="message" role="alert" aria-live="polite"></p>
-      <button type="submit" class="btn dark" id="login-btn">Log in</button>
+      <button type="submit" id="login-btn" class="btn primary big">Log in</button>
 
-      <div class="divider"><span>Don't have an account?</span></div>
-      <a class="btn" href="registration.html">Register</a>
+      <p class="alt">Don't have an account?</p>
+      <button type="button" class="btn" onclick="location.href='registration.html'">Register</button>
     </form>
   </main>
 
