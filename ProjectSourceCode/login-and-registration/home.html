@@ -76,14 +76,18 @@
     <main class="map">
       <div class="map-top">
         <div class="game-count">0 games near you</div>
+
+        <button type="button" id="track-location" class="btn" disabled>
+          Start location tracking
+        </button>
+
         <div class="zoom">
           <button type="button" aria-label="Zoom in">+</button>
           <button type="button" aria-label="Zoom out">−</button>
         </div>
       </div>
 
-      <!-- Empty map for now; game pins will go here later. -->
-      <div class="map-label" aria-hidden="true">MAP</div>
+      <div id="google-map"></div>
 
       <section class="panel" id="panel-notifications" aria-label="Notifications" hidden>
         <div class="panel-head">

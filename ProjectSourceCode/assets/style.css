@@ -384,3 +384,15 @@ body.centered {
   .map { min-height: 70vh; }
   .panel { right: 8px; left: 8px; width: auto; max-width: none; }
 }
+
+#google-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-top,
+.panel {
+  z-index: 1;
+}
