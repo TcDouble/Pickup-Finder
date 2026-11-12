@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Storage security rules for Pickup-Finder. Deploying this file replaces every
+// Storage rule in the project, so any path not listed here is denied.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // profilePictures/{uid}/avatar: one picture per user, set at registration.
+    match /profilePictures/{userId}/{file} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && file == 'avatar'
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/(png|jpeg|webp|gif)');
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+  }
+}

@@ -3,15 +3,26 @@
 // page and registerUser.js both use this.
 
 export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+export const PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 export function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/** The problem with a chosen profile picture ({ type, size }), or null if it's fine or missing. */
+export function photoError(photo) {
+  if (!photo) return null;
+  if (!PHOTO_TYPES.includes(photo.type)) return "Profile picture must be a PNG, JPEG, WebP or GIF.";
+  if (photo.size > MAX_PHOTO_BYTES) return "Profile picture must be 2 MB or smaller.";
+  return null;
+}
+
 /**
  * Check the sign-up form.
  *
- * input: { displayName, email, password, confirm, city, sports }
+ * input: { photo, displayName, email, password, confirm, city, sports }
+ *   photo is optional: a File (or anything with `type` and `size`), or null.
  * options.needsCredentials: false when the person is already signed in and is
  *   only finishing their profile, so email and password aren't asked for.
  *
@@ -28,6 +39,8 @@ export function validateRegistration(input = {}, { needsCredentials = true } = {
   const sports = Array.isArray(input.sports) ? input.sports.map(String) : [];
 
   const errors = [];
+  const badPhoto = photoError(input.photo);
+  if (badPhoto) errors.push(badPhoto);
   if (!displayName) errors.push("Enter a display name.");
   if (needsCredentials) {
     if (!email) errors.push("Enter your email.");

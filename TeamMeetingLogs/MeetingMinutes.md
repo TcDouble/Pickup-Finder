@@ -1,7 +1,18 @@
 # Meeting Notes — Team 012-4
-Last edited: 
+Last edited:
+- 2026-11-11 `<j01001000>`
 - 2026-11-4 `<j01001000>`
 - 2026-10-28 `<julianrayon-collab>`
+
+## Week 13 — `November 11, 2026`
+
+### Agenda
+
+- Thiru absent.
+- Altaf checked-in with each member.
+- Google Maps integration.
+
+---
 
 ## Week 12 — `November 4, 2026`
 

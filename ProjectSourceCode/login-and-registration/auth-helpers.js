@@ -5,6 +5,9 @@ import { MIN_PASSWORD_LENGTH, isValidEmail } from "./validateRegistration.js";
 // TODO: point to the map page once it exists
 export const MAP_PAGE = "home.html";
 
+// Shown wherever a profile's photoURL is null.
+export const DEFAULT_PHOTO = "../assets/no-profile-picture-icon.svg";
+
 // The sign-up rules live in validateRegistration.js so they can be unit tested.
 export { MIN_PASSWORD_LENGTH, isValidEmail };
 
@@ -28,6 +31,11 @@ export function friendlyError(code) {
       return "Too many attempts. Please wait a moment and try again.";
     case "auth/network-request-failed":
       return "Network error. Check your connection and try again.";
+    case "storage/unauthorized":
+      return "We couldn't upload that picture. Try a smaller PNG or JPEG, or skip it.";
+    case "storage/retry-limit-exceeded":
+    case "storage/canceled":
+      return "The picture upload didn't finish. Check your connection and try again.";
     case "permission-denied":
       return "Your account was created, but we couldn't save your profile. Check your Firestore rules.";
     default:

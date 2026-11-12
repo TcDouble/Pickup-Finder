@@ -4,6 +4,7 @@ import { expect } from "chai";
 import {
   validateRegistration,
   MIN_PASSWORD_LENGTH,
+  MAX_PHOTO_BYTES,
 } from "../login-and-registration/validateRegistration.js";
 
 const good = {
@@ -62,5 +63,33 @@ describe("validateRegistration (unit)", () => {
   it("skips email and password when an already signed-in user is finishing their profile", () => {
     const result = validateRegistration({ displayName: "Riley" }, { needsCredentials: false });
     expect(result.valid).to.equal(true);
+  });
+
+  describe("profile picture", () => {
+    const withPhoto = (photo) => validateRegistration({ ...good, photo });
+
+    it("accepts no picture", () => {
+      expect(withPhoto(null).valid).to.equal(true);
+    });
+
+    it("accepts a small PNG", () => {
+      expect(withPhoto({ type: "image/png", size: 1024 }).valid).to.equal(true);
+    });
+
+    it("accepts a picture of exactly 2 MB", () => {
+      expect(withPhoto({ type: "image/jpeg", size: MAX_PHOTO_BYTES }).valid).to.equal(true);
+    });
+
+    it("rejects a file that isn't an image", () => {
+      const result = withPhoto({ type: "text/plain", size: 10 });
+      expect(result.valid).to.equal(false);
+      expect(result.errors).to.deep.equal(["Profile picture must be a PNG, JPEG, WebP or GIF."]);
+    });
+
+    it("rejects a picture one byte over 2 MB", () => {
+      const result = withPhoto({ type: "image/png", size: MAX_PHOTO_BYTES + 1 });
+      expect(result.valid).to.equal(false);
+      expect(result.errors).to.deep.equal(["Profile picture must be 2 MB or smaller."]);
+    });
   });
 });

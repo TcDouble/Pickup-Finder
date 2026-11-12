@@ -13,6 +13,7 @@ Pickup games live in the Firestore `events` collection, the feedback players lea
 | `notifications.js` | Notification settings (email, text, desktop; match alerts, reminders, feedback requests) and the in-app inbox ([below](#notifications)). The notifier in [`../notifier/`](../notifier/) sends the messages. |
 | `firebase-messaging-sw.js` | Service worker that shows desktop notifications while the site is closed. |
 | `firestore.rules` | Security rules for `events`, `feedback`, `sportsmanship`, `notificationSettings`, and `notifications` (and a minimal rule for `users`). |
+| `storage.rules` | Storage security rules: each user can upload only their own profile picture (`profilePictures/{uid}/avatar`). Tested in `../test/storage-rules.spec.js`. |
 | `firestore.indexes.json` | The composite indexes the searches need. |
 | `firebase.json`, `.firebaserc` | Firebase CLI settings for deploying and for the local emulators. |
 | `tests/` | Tests that run the modules and the rules against the emulators. |
