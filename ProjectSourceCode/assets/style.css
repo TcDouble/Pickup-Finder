@@ -152,6 +152,15 @@ body.centered {
 .card-header p { margin: 0; color: #D9D9D9; }
 .card-body { padding: 24px 28px 28px; display: flex; flex-direction: column; gap: 16px; }
 .alt { margin: 0; text-align: center; font-size: 14px; color: var(--muted); }
+/* "You're signed in as ..." line on the login and registration pages */
+.notice {
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px dashed var(--black);
+  border-radius: var(--radius);
+  background: var(--gold-tint);
+  font-size: 14px;
+}
 .grid-2, .grid-3 { display: grid; gap: 12px; }
 .grid-2 { grid-template-columns: 1fr 1fr; }
 .grid-3 { grid-template-columns: 1.3fr 1fr 1fr; }
@@ -209,6 +218,14 @@ body.centered {
   font-weight: 700;
 }
 .host-btn:hover { background: var(--gold); }
+.host-btn[aria-pressed="true"] { background: var(--black); color: var(--gold); border-style: solid; }
+
+/* Home stays hidden until home.js knows a logged-in user with a profile is here. */
+.auth-pending .app { visibility: hidden; }
+
+/* Create-a-game form inside its home panel */
+.panel-intro { margin: 0; font-size: 14px; }
+.panel-form { display: flex; flex-direction: column; gap: 14px; }
 
 .account { border-top: 2px solid var(--black); display: flex; flex-direction: column; }
 .account button {

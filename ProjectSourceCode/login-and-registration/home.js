@@ -4,38 +4,44 @@ import { hasProfile } from "./auth-helpers.js";
 import { watchEvents } from "../firebase/events.js";
 import { MAPS_API_KEY } from "./maps-config.local.js";
 
+// You have to be logged in to use the app. The page stays hidden (see .auth-pending
+// in home.html) until we know who's here:
+//   - not logged in        -> login page
+//   - profile not finished -> registration page, which switches to "Finish setup"
+//   - otherwise            -> show the app
+// replace() keeps this page out of history, so Back doesn't bounce you here again.
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    window.location.href = "login.html";
+    window.location.replace("login.html");
     return;
   }
 
   try {
     if (!(await hasProfile(user.uid))) {
-      window.location.href = "registration.html";
+      window.location.replace("registration.html");
       return;
     }
-
+  } catch (err) {
+    // Couldn't check the profile (e.g. offline). They are logged in, so let them in.
+    console.error(err);
+  }
+  document.documentElement.classList.remove("auth-pending");
+  try {
     await initializePickupMap();
   } catch (err) {
-    console.error(err);
+    console.error("Cannot initialize map:", err);
   }
 });
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await signOut(auth);
-  window.location.href = "login.html";
+  window.location.replace("login.html");
 });
 
-// The only sidebar button wired up to a real feature for now.
-document.getElementById("host-game-btn").addEventListener("click", () => {
-  window.location.href = "../create-game/create-game.html";
-});
-
-// --- Wireframe behavior only: buttons change what's shown, nothing else. ---
-
-// Account buttons open their panel over the map; clicking the open one again closes it.
-const navButtons = document.querySelectorAll(".account [data-panel]");
+// Sidebar buttons open their panel over the map; clicking the open one again closes it.
+// "+ Host a game" opens the create-game form, which ../create-game/create-game.js runs.
+// The other panels are wireframe placeholders.
+const navButtons = document.querySelectorAll(".sidebar [data-panel]");
 const panels = document.querySelectorAll(".panel");
 
 function showPanel(name) {
@@ -54,7 +60,7 @@ document.querySelectorAll(".close-btn").forEach((btn) => {
 });
 
 // Activity chips toggle on and off (they don't filter anything yet).
-document.querySelectorAll(".chip").forEach((chip) => {
+document.querySelectorAll(".filters .chip").forEach((chip) => {
   chip.addEventListener("click", () => {
     chip.setAttribute("aria-pressed", String(chip.getAttribute("aria-pressed") !== "true"));
   });
