@@ -1,145 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Create your account</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --court: #1f4d3a;
-      --court-dark: #153629;
-      --line: #f2efe6;
-      --ink: #1b1f1d;
-      --muted: #5d6762;
-      --field: #ffffff;
-      --border: #c9cfca;
-      --error: #b3261e;
-      --bg: #eef1ee;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Barlow", system-ui, sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-    }
-    .card {
-      width: 100%;
-      max-width: 440px;
-      background: var(--field);
-      border: 2px solid var(--court);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    header {
-      background: var(--court);
-      color: var(--line);
-      padding: 24px 28px 20px;
-      /* center-circle motif, a nod to a court marking */
-      background-image: radial-gradient(circle at 100% 0, transparent 38px, var(--court-dark) 39px, var(--court-dark) 41px, transparent 42px);
-    }
-    h1 {
-      font-family: "Barlow Condensed", sans-serif;
-      font-weight: 700;
-      font-size: 2rem;
-      margin: 0 0 4px;
-      letter-spacing: 0.01em;
-    }
-    header p { margin: 0; opacity: 0.85; }
-    form { padding: 24px 28px 28px; display: grid; gap: 16px; }
-    label, legend { font-weight: 500; font-size: 0.95rem; }
-    .field { display: grid; gap: 6px; }
-    input[type="text"], input[type="email"], input[type="password"], select {
-      font: inherit;
-      padding: 10px 12px;
-      border: 1.5px solid var(--border);
-      border-radius: 4px;
-      background: #fff;
-    }
-    input:focus-visible, select:focus-visible, button:focus-visible {
-      outline: 3px solid #e8b100;
-      outline-offset: 1px;
-    }
-    .hint { font-size: 0.85rem; color: var(--muted); }
-    fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
-    .sports { display: flex; flex-wrap: wrap; gap: 8px; }
-    .sports label {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 999px;
-      cursor: pointer; font-weight: 400;
-    }
-    .sports input { accent-color: var(--court); }
-    .sports label:has(input:checked) { border-color: var(--court); background: #e3ece6; }
-    button[type="submit"] {
-      font-family: "Barlow Condensed", sans-serif;
-      font-size: 1.2rem; font-weight: 700; letter-spacing: 0.02em;
-      padding: 12px; border: 0; border-radius: 4px;
-      background: var(--court); color: var(--line); cursor: pointer;
-    }
-    button[type="submit"]:hover { background: var(--court-dark); }
-    button[disabled] { opacity: 0.6; cursor: progress; }
-    #message { min-height: 1.2em; font-size: 0.92rem; color: var(--error); margin: 0; }
-    #message.ok { color: var(--court); }
-    .alt { text-align: center; font-size: 0.92rem; color: var(--muted); margin: 0; }
-    .alt a { color: var(--court); font-weight: 500; }
-    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - PickupFinder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="auth.css">
 </head>
 <body>
   <main class="card">
-    <header>
-      <h1>Find your next game</h1>
-      <p>Create an account to join and host pickup games.</p>
-    </header>
+    <div class="brand">
+      <div class="brand-logo"></div>
+      <div class="brand-name">PickupFinder</div>
+    </div>
 
     <form id="register-form" novalidate>
+      <div class="heading">
+        <div class="eyebrow">Find your next game</div>
+        <h1>Create your account</h1>
+        <p class="subtitle">Join and host pickup games near you.</p>
+      </div>
+
+      <p class="notice" id="signed-in-note" hidden></p>
+
       <div class="field">
         <label for="displayName">Display name</label>
-        <input id="displayName" type="text" autocomplete="nickname" maxlength="30" required />
+        <input id="displayName" type="text" autocomplete="nickname" maxlength="30" required>
       </div>
 
       <div class="field">
         <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="email" required />
+        <input id="email" type="email" autocomplete="email" required>
       </div>
 
       <div class="field">
         <label for="password">Password</label>
-        <input id="password" type="password" autocomplete="new-password" minlength="8" required />
+        <input id="password" type="password" autocomplete="new-password" minlength="8" required>
         <span class="hint">At least 8 characters.</span>
       </div>
 
       <div class="field">
         <label for="confirm">Confirm password</label>
-        <input id="confirm" type="password" autocomplete="new-password" required />
+        <input id="confirm" type="password" autocomplete="new-password" required>
       </div>
 
       <div class="field">
         <label for="city">City</label>
-        <input id="city" type="text" autocomplete="address-level2" />
+        <input id="city" type="text" autocomplete="address-level2">
       </div>
 
       <fieldset>
         <legend>Sports you play</legend>
-        <div class="sports">
-          <label><input type="checkbox" name="sports" value="basketball" /> Basketball</label>
-          <label><input type="checkbox" name="sports" value="soccer" /> Soccer</label>
-          <label><input type="checkbox" name="sports" value="volleyball" /> Volleyball</label>
-          <label><input type="checkbox" name="sports" value="tennis" /> Tennis</label>
-          <label><input type="checkbox" name="sports" value="pickleball" /> Pickleball</label>
-          <label><input type="checkbox" name="sports" value="football" /> Football</label>
+        <div class="chips">
+          <label><input type="checkbox" name="sports" value="basketball">Basketball</label>
+          <label><input type="checkbox" name="sports" value="soccer">Soccer</label>
+          <label><input type="checkbox" name="sports" value="volleyball">Volleyball</label>
+          <label><input type="checkbox" name="sports" value="tennis">Tennis</label>
+          <label><input type="checkbox" name="sports" value="pickleball">Pickleball</label>
+          <label><input type="checkbox" name="sports" value="football">Football</label>
         </div>
       </fieldset>
 
-      <p id="message" role="alert" aria-live="polite"></p>
-      <button type="submit" id="submit-btn">Create account</button>
+      <p id="message" class="message" role="alert" aria-live="polite"></p>
+      <button type="submit" class="btn dark" id="submit-btn">Create account</button>
       <p class="alt">Already have an account? <a href="login.html">Log in</a></p>
     </form>
   </main>

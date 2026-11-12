@@ -1,5 +1,5 @@
 import { auth, db } from "../firebase/firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { MAP_PAGE, friendlyError, hasProfile } from "./auth-helpers.js";
 import { validateRegistration } from "./validateRegistration.js";
 import { registerUser } from "./registerUser.js";
@@ -7,7 +7,11 @@ import { registerUser } from "./registerUser.js";
 const form = document.getElementById("register-form");
 const message = document.getElementById("message");
 const submitBtn = document.getElementById("submit-btn");
+const signedInNote = document.getElementById("signed-in-note");
 let submitting = false;
+// Set when someone with a finished profile opens this page. Their account is
+// left alone; making a new one signs them out first.
+let signedInWithProfile = false;
 
 function showMessage(text, ok = false) {
   message.textContent = text;
@@ -17,17 +21,31 @@ function showMessage(text, ok = false) {
 function enterFinishMode(user) {
   form.email.value = user.email;
   form.email.disabled = true;
-  form.password.closest(".field").style.display = "none";
-  form.confirm.closest(".field").style.display = "none";
+  form.password.closest(".field").hidden = true;
+  form.confirm.closest(".field").hidden = true;
   submitBtn.textContent = "Finish setup";
 }
 
-// A signed-in user on this page either already has a profile or still needs one.
+function showSignedInNote(user) {
+  signedInNote.textContent = `You're signed in as ${user.email}. Creating a new account will sign you out. `;
+  const link = document.createElement("a");
+  link.href = MAP_PAGE;
+  link.textContent = "Go to home";
+  signedInNote.append(link);
+  signedInNote.hidden = false;
+}
+
+// Being signed in doesn't send you away from this page. If the profile was
+// never finished, the form switches to finishing it.
 onAuthStateChanged(auth, async (user) => {
-  if (!user || submitting) return;
+  if (submitting) return;
+  signedInWithProfile = false;
+  signedInNote.hidden = true;
+  if (!user) return;
   try {
     if (await hasProfile(user.uid)) {
-      window.location.href = MAP_PAGE;
+      signedInWithProfile = true;
+      showSignedInNote(user);
       return;
     }
     enterFinishMode(user);
@@ -53,7 +71,8 @@ form.addEventListener("submit", async (e) => {
   };
 
   // Client-side checks (same rules registerUser applies)
-  const check = validateRegistration(input, { needsCredentials: !auth.currentUser });
+  const creatingNewAccount = !auth.currentUser || signedInWithProfile;
+  const check = validateRegistration(input, { needsCredentials: creatingNewAccount });
   if (!check.valid) return showMessage(check.errors[0]);
 
   submitting = true;
@@ -61,6 +80,13 @@ form.addEventListener("submit", async (e) => {
   submitBtn.textContent = "Saving…";
 
   try {
+    // Don't overwrite the signed-in user's profile with this new one.
+    if (signedInWithProfile) {
+      await signOut(auth);
+      signedInWithProfile = false;
+      signedInNote.hidden = true;
+    }
+
     // Creates the auth user (unless an earlier attempt already did), sets the
     // display name, and saves users/{uid}. The password never goes to Firestore.
     await registerUser({ auth, db }, input);

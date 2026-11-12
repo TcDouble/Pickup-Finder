@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-pending">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,6 +25,8 @@
     }
     button { cursor: pointer; font: inherit; color: var(--ink); }
     [hidden] { display: none !important; }
+    /* home.js removes this class once it knows a logged-in user with a profile is here. */
+    .auth-pending .app { visibility: hidden; }
 
     .app {
       min-height: 100vh;
@@ -88,6 +90,7 @@
       font-size: 14px;
       font-weight: 600;
     }
+    .host-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-style: solid; }
 
     .account { border-top: 2px solid var(--ink); display: flex; flex-direction: column; }
     .account button {
@@ -265,6 +268,47 @@
     .section-label { font-size: 13px; font-weight: 600; }
     .bio { margin: 0; font-size: 14px; line-height: 1.45; color: var(--body-text); }
 
+    /* ---- Create a game panel (form logic lives in ../create-game/create-game.js) ---- */
+    #game-form { display: flex; flex-direction: column; gap: 14px; }
+    #game-form fieldset { border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    #game-form legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+    #game-form .field input, #game-form textarea { width: 100%; }
+    #game-form textarea {
+      min-height: 72px;
+      resize: vertical;
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 14px;
+      color: var(--ink);
+    }
+    #game-form .hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+    #game-form .chips label {
+      min-height: 40px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 22px;
+      background: var(--paper);
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    #game-form .chips input { position: absolute; opacity: 0; pointer-events: none; }
+    #game-form .chips label:has(input:checked) { background: var(--ink); color: var(--paper); font-weight: 600; }
+    #game-form input:focus-visible, #game-form textarea:focus-visible, #game-form button:focus-visible,
+    #game-form label:has(input:focus-visible) { outline: 3px solid #4C8DFF; outline-offset: 2px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .locate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .locate .btn { padding: 0 12px; font-size: 13px; min-height: 36px; }
+    #coords { font-size: 12px; color: var(--muted); }
+    #coords.set { color: var(--ink); font-weight: 600; }
+    #message { margin: 0; min-height: 1.2em; font-size: 14px; color: #B3261E; }
+    #message.ok { color: var(--ink); font-weight: 600; }
+    #game-form button[disabled] { opacity: 0.6; cursor: progress; }
+
     @media (max-width: 640px) {
       .sidebar { max-width: none; border-right: none; border-bottom: 2px solid var(--ink); }
       .map { min-height: 70vh; }
@@ -316,7 +360,7 @@
           </select>
         </div>
 
-        <button type="button" class="host-btn" id="host-game-btn">+ Host a game</button>
+        <button type="button" class="host-btn" id="host-game-btn" data-panel="create" aria-pressed="false">+ Host a game</button>
       </form>
 
       <nav class="account" aria-label="Account">
@@ -347,6 +391,88 @@
 
       <!-- Empty map for now; game pins will go here later. -->
       <div class="map-label" aria-hidden="true">MAP</div>
+
+      <section class="panel" id="panel-create" aria-label="Create a game" hidden>
+        <div class="panel-head">
+          <div class="panel-title">
+            <div class="eyebrow">Host a game</div>
+            <h2>Create a game</h2>
+          </div>
+          <button type="button" class="close-btn" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <p class="muted" style="margin: 0; font-size: 14px">Set up a pickup game so players nearby can find it and join.</p>
+
+        <form id="game-form" novalidate>
+          <fieldset>
+            <legend>Sport</legend>
+            <div class="chips">
+              <label><input type="radio" name="sport" value="basketball" checked>Basketball</label>
+              <label><input type="radio" name="sport" value="soccer">Soccer</label>
+              <label><input type="radio" name="sport" value="volleyball">Volleyball</label>
+              <label><input type="radio" name="sport" value="tennis">Tennis</label>
+              <label><input type="radio" name="sport" value="pickleball">Pickleball</label>
+              <label><input type="radio" name="sport" value="football">Football</label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="title">Game name <span class="hint">(optional)</span></label>
+            <input id="title" type="text" maxlength="60" placeholder="e.g. 5v5 full court">
+          </div>
+
+          <div class="field">
+            <label for="placeName">Where</label>
+            <input id="placeName" type="text" maxlength="100" placeholder="Park / court name" required>
+          </div>
+
+          <div class="field">
+            <label for="address">Address <span class="hint">(optional, helps us find it)</span></label>
+            <input id="address" type="text" maxlength="200" autocomplete="street-address" placeholder="e.g. 1600 Pleasant St, Boulder, CO">
+            <div class="locate">
+              <button type="button" class="btn" id="find-place">Find this place</button>
+              <button type="button" class="btn" id="use-location">Use my location</button>
+              <span id="coords" aria-live="polite">Not placed on the map yet.</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="date">Date</label>
+            <input id="date" type="date" required>
+          </div>
+          <div class="pair">
+            <div class="field">
+              <label for="startTime">Starts</label>
+              <input id="startTime" type="time" required>
+            </div>
+            <div class="field">
+              <label for="endTime">Ends</label>
+              <input id="endTime" type="time" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="playerLimit">Total players</label>
+            <input id="playerLimit" type="number" min="2" max="50" value="10" required>
+            <span class="hint">Including you. 2 to 50.</span>
+          </div>
+
+          <fieldset>
+            <legend>Level</legend>
+            <div class="chips">
+              <label><input type="radio" name="level" value="casual" checked>Casual</label>
+              <label><input type="radio" name="level" value="competitive">Competitive</label>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="description">Description <span class="hint">(optional)</span></label>
+            <textarea id="description" maxlength="500" placeholder="e.g. Bring a light and dark shirt."></textarea>
+          </div>
+
+          <p id="message" role="alert" aria-live="polite"></p>
+          <button type="submit" class="btn big dark" id="submit-btn">Create game</button>
+        </form>
+      </section>
 
       <section class="panel" id="panel-notifications" aria-label="Notifications" hidden>
         <div class="panel-head">
@@ -455,5 +581,6 @@
   </div>
 
   <script type="module" src="home.js"></script>
+  <script type="module" src="../create-game/create-game.js"></script>
 </body>
 </html>
