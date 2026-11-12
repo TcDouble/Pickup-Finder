@@ -1,0 +1,23 @@
+# Runs the notifier in Docker against the live Firebase project.
+#
+# From ProjectSourceCode/notifier (see README.md for getting the two files):
+#   cp .env.example .env              then fill in the email and text settings
+#   (save the service account key as service-account.json in this folder)
+#   docker compose up --build -d      start it in the background
+#   docker compose logs -f            watch what it sends
+#   docker compose down               stop it
+name: pickup-finder-notifier
+
+services:
+  notifier:
+    build: .
+    env_file: .env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase_service_account
+    secrets:
+      - firebase_service_account
+    restart: unless-stopped
+
+secrets:
+  firebase_service_account:
+    file: ./service-account.json

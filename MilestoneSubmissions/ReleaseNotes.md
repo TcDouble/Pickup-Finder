@@ -2,30 +2,61 @@
 
 Last edited:
 
+- 2026-11-11 `<j01001000>`
 - 2026-11-3 `<j01001000>`
 - 2026-10-30 `<j01001000>`
 
-- Week 12 — November 11, 2026
-- ZHUCHEN PENG (KUHN114514)
-Added:
+## Week 13 — `November 11, 2026`
 
-Completed Lab 10 automated testing using Docker and Firebase Emulators.
+### Added
 
-Verified that all 33 tests passed successfully in two consecutive runs.
+- Lab 10 Docker test setup and `.env.test.example` template (#24). `<KUHN114514>`
+- Mocha and Chai packages for Lab 10 testing, with `node_modules` kept out of Git. `<julianrayon-collab>`
+- Lab 10 tests on the Firebase emulators: a unit test for the sign-up checks, a good and a bad sign-up test, and extra credit tests for creating a game. `<j01001000>`
+- Lab 10 UAT plan. `<julianrayon-collab>`
+- Optional profile picture upload on the registration page, with Storage rules and tests. The Lab 10 test suite is now 33 tests. `<miner5758>`
+- Home page rebuilt to match the map wireframe, with a sidebar for filters and the account panel. "+ Host a game" opens the create-game page. `<TcDouble>`
+- Global `style.css` with CU Boulder colors, used by every page. `<miner5758>`
+- Meeting notes for Weeks 11 and 12. `<j01001000>`
 
-Tested user registration, profile pictures, Firebase security rules, and event creation.
+### Changed
 
-Demonstrated automated bug detection by intentionally introducing a password storage bug.
+- Login and registration pages connected and moved into one `login-and-registration` folder. `<miner5758>`
+- Create-game page moved into its own `create-game` folder. `<TcDouble>`
+- Sign-up checks split out of `registration.js` into `validateRegistration.js` and `registerUser.js` so they can be tested. `<j01001000>`
+- Docker test setup now runs on the Firebase emulators instead of PostgreSQL. `<j01001000>`
+- UAT plan moved to `milestones/uat-plan.md`, where Lab 10 looks for it. `<j01001000>`
+- UAT plan steps 7 and 8 revised. `<julianrayon-collab>`
+- UAT plan updated with issue numbers, the app's real error messages, and a game location for UAT-06. `<gtots1656>`
+- Emails are no longer saved in player profiles; they stay in Firebase Auth. `<miner5758>`
+- Home page sends a signed-in user with no profile to the finish-setup form. `<miner5758>`
+- Login page now uses the same card layout as the registration and create-game pages. `<miner5758>`
 
-Confirmed that the automated tests detected the bug (31 passing, 2 failing).
+### Fixed
 
-Removed the bug and verified that all 33 tests passed again.
+- Removed a Google Maps API key that was uploaded by accident (#22). `<KUHN114514>`
+- Docker test build no longer breaks on computers with spaces in `PATH`. `<miner5758>`
 
-Completed the Lab 10 UAT plan at milestones/uat-plan.md.
+### Lab 10 testing record — KUHN114514
 
-Pending:
+- Completed automated testing with Docker and Firebase Emulators; the recorded runs had all 33 tests passing twice consecutively.
+- Covered registration, profile pictures, Firebase security rules, and event creation.
+- Demonstrated bug detection by introducing a password storage bug: 31 tests passed and 2 failed. After removing the bug, all 33 tests passed again.
+- Completed the UAT plan at `milestones/uat-plan.md`.
+- Pending at the time of this record: TA review and final Canvas submission.
 
-TA review and final Canvas submission.
+### Planned for next week
+
+The checklist issue on the project board:
+- Matchmaking and Sportsmanship Rating (review PR #25) `https://github.com/TcDouble/Pickup-Finder/issues/13`
+- Matchmaking Notifications `https://github.com/TcDouble/Pickup-Finder/issues/17`
+- Login and Register Page `https://github.com/TcDouble/Pickup-Finder/issues/4`
+- Be able to create an event `https://github.com/TcDouble/Pickup-Finder/issues/20`
+- User Database `https://github.com/TcDouble/Pickup-Finder/issues/5`
+- Menu Interactivity/Filters `https://github.com/TcDouble/Pickup-Finder/issues/7`
+- To be able to edit an event `https://github.com/TcDouble/Pickup-Finder/issues/23`
+
+---
 
 ## Week 12 — `November 3, 2026`
 
@@ -33,6 +64,8 @@ TA review and final Canvas submission.
 
 - `<feature>` (#`<PR number>`, `<github-username>`)
 - Firebase Events Database. `<j01001000>`
+- Google Maps on the signed-in home page. `<KUHN114514>`
+- Create-game page that saves games to Firebase, built from a find-game page prototype. `<TcDouble>`
 
 ### Changed
 
