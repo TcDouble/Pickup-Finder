@@ -1,0 +1,22 @@
+{
+  "name": "pickup-finder-notifier",
+  "private": true,
+  "type": "module",
+  "description": "Sends Pickup-Finder match alerts, game reminders, and feedback requests by email, text message, and desktop notification",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "once": "node src/index.js --once",
+    "test": "firebase emulators:exec --config ../firebase/firebase.json --only auth,firestore --project demo-pickup-finder \"node --test --test-concurrency=1 test/config.test.js test/matching.test.js test/messages.test.js test/channels.test.js test/notifier.test.js\"",
+    "test:unit": "node --test test/config.test.js test/matching.test.js test/messages.test.js test/channels.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "13.10.0",
+    "nodemailer": "10.2.1"
+  },
+  "devDependencies": {
+    "firebase-tools": "14.27.0"
+  }
+}

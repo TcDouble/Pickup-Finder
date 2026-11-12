@@ -1,0 +1,6 @@
+node_modules/
+# Settings and passwords for this machine. Copy .env.example to .env.
+.env
+# The Firebase service account key. Never commit it.
+service-account.json
+*-debug.log
