@@ -1,8 +1,18 @@
 # Meeting Notes — Team 012-4
 Last edited:
+- 2026-11-12 `<j01001000>`
 - 2026-11-11 `<j01001000>`
 - 2026-11-4 `<j01001000>`
 - 2026-10-28 `<julianrayon-collab>`
+
+## Week 14 — `November 18, 2026`
+
+### Agenda
+
+- Project interview time: 11:55 AM or 1:35 PM on Thursday, Dec 3?
+- Finish beta before Fall Break so that a port can be made to iOS over the break.
+
+---
 
 ## Week 13 — `November 11, 2026`
 
