@@ -24,13 +24,17 @@ describe("buildMessage", () => {
       m.body,
       "Basketball (5v5) on Fri, Nov 13, 6:00 PM, 6 spots left. The players' average sportsmanship score is 94.",
     );
-    assert.equal(m.link, "https://pickup.example.com/game.html?id=game%201");
+    assert.equal(
+      m.link,
+      "https://pickup.example.com/login-and-registration/home.html?panel=recommended&game=game%201",
+    );
   });
 
   test("reminders give the local start time and the player count", () => {
     const m = buildMessage("reminder", { ...game, title: "", participantIds: ["a"] }, options);
     assert.equal(m.title, "Basketball starts in about an hour");
     assert.equal(m.body, "Basketball at North Boulder Park, 6:00 PM. 1 player going.");
+    assert.equal(m.link, "https://pickup.example.com/login-and-registration/home.html?panel=notifications");
   });
 
   test("feedback requests say when rating closes and link to the rating page", () => {
@@ -38,7 +42,7 @@ describe("buildMessage", () => {
     const m = buildMessage("feedback", game, { ...options, deadline });
     assert.equal(m.title, "How was basketball at North Boulder Park?");
     assert.match(m.body, /^Rate the other players by Fri, Nov 27\./);
-    assert.equal(m.link, "https://pickup.example.com/rate-players.html?id=game%201");
+    assert.equal(m.link, "https://pickup.example.com/login-and-registration/home.html?panel=rate&game=game%201");
   });
 
   test("text messages fit in two texts and use only plain characters", () => {

@@ -82,7 +82,7 @@ It uses the `demo-pickup-finder` project and prints every message instead of sen
 | Text messages | A Twilio account and phone number. A free trial can only text numbers you've verified in Twilio, which is enough for a demo. | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` |
 | Desktop | Nothing extra for the notifier: it uses the service account. The site needs the Web Push key in `VAPID_KEY` in [`../firebase/notifications.js`](../firebase/notifications.js), and a page that calls `enableDesktopNotifications()`. | `DESKTOP_PUSH` (on by default) |
 
-The links in messages point at `APP_URL` plus the paths in `LINKS` in [`src/messages.js`](src/messages.js). The game and rating pages don't exist yet, so update those paths when they're built. Desktop notifications only open a link that starts with `https://`.
+The links in messages point at `APP_URL` plus the paths in `LINKS` in [`src/messages.js`](src/messages.js), which open a panel on the home page: match alerts open Recommended, rating requests open Rate players, and reminders open the Notifications inbox. Set `APP_URL` to the address the `ProjectSourceCode` folder is served from. Desktop notifications only open a link that starts with `https://`.
 
 ## Files
 
