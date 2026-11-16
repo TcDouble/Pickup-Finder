@@ -35,8 +35,12 @@ ProjectSourceCode/
 ├── README.md                    # this file
 ├── assets/
 │   ├── style.css                # global styles every page links (CU gold, black, grays)
+│   ├── panel-helpers.js         # shared helpers for the home page's Notifications, Recommended, and Rate players panels
 │   └── no-profile-picture-icon.* # default profile picture
 ├── create-game/                 # host-a-game page
+├── notifications/               # home page panel: notification inbox and settings
+├── recommended/                 # home page panel: recommended games (matchmaking), with Join
+├── rate-players/                # home page panel: rate the other players after a game
 ├── firebase/
 │   ├── firebase-config.js       # shared setup: exports app, auth, db, storage
 │   ├── storage.rules            # security rules for profile pictures
@@ -179,7 +183,7 @@ These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requ
 | Map integration | Each game stores `lat` and `lng`, and `listEvents` finds games inside the map's view or within a distance | Built |
 | Real-time updates | `watchEvents` and `watchEvent` update the page as soon as a game changes | Built |
 | Media storage for profile and event images | Profile pictures upload to Cloud Storage at registration, and the URL is saved on the profile. [`firebase/storage.rules`](firebase/storage.rules) lets only the owner write their picture (PNG, JPEG, WebP or GIF, up to 2 MB). Event images aren't done. | Partly built |
-| Notifications | Match alerts, a reminder an hour before each game, and a request to rate the players after it, by email, text message, or desktop notification, whichever the player chooses ([`firebase/notifications.js`](firebase/notifications.js) and [`notifier/`](notifier/), GitHub issue #17). No settings page or inbox page yet. | Built (back end) |
+| Notifications | Match alerts, a reminder an hour before each game, and a request to rate the players after it, by email, text message, or desktop notification, whichever the player chooses ([`firebase/notifications.js`](firebase/notifications.js) and [`notifier/`](notifier/), GitHub issue #17). The Notifications panel on the home page shows the inbox and the settings. | Built |
 | Removing past events and enforcing other rules | The security rules enforce the player limit and host-only edits. Searches only return games that haven't started, so past games drop off the map. Nothing deletes old games yet. | Partly built |
 | User info only editable by its owner | The `users` rule only lets you write your own profile | Built |
 

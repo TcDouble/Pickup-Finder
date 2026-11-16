@@ -9,12 +9,14 @@ const SPORT_NAMES = {
   football: "Football",
 };
 
-// Where each notification takes you. The game and rating pages aren't built
-// yet: change these paths when they are.
+// Where each notification takes you: a panel on the home page. Match alerts
+// open Recommended with the game on top, rating requests open Rate players for
+// the game, and reminders open the Notifications inbox. home.js reads these.
+const HOME = "/login-and-registration/home.html";
 export const LINKS = {
-  match: (id) => `/game.html?id=${encodeURIComponent(id)}`,
-  reminder: (id) => `/game.html?id=${encodeURIComponent(id)}`,
-  feedback: (id) => `/rate-players.html?id=${encodeURIComponent(id)}`,
+  match: (id) => `${HOME}?panel=recommended&game=${encodeURIComponent(id)}`,
+  reminder: () => `${HOME}?panel=notifications`,
+  feedback: (id) => `${HOME}?panel=rate&game=${encodeURIComponent(id)}`,
 };
 
 export const sportName = (sportId) => SPORT_NAMES[sportId] ?? sportId;

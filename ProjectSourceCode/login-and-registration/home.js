@@ -26,6 +26,7 @@ onAuthStateChanged(auth, async (user) => {
     console.error(err);
   }
   document.documentElement.classList.remove("auth-pending");
+  openPanelFromLink();
   try {
     await initializePickupMap();
   } catch (err) {
@@ -40,13 +41,28 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 // Sidebar buttons open their panel over the map; clicking the open one again closes it.
 // "+ Host a game" opens the create-game form, which ../create-game/create-game.js runs.
-// The other panels are wireframe placeholders.
+// Notifications, Recommended, and Rate players are run by the scripts in
+// ../notifications/, ../recommended/, and ../rate-players/.
+// My games and Profile are still wireframe placeholders.
 const navButtons = document.querySelectorAll(".sidebar [data-panel]");
 const panels = document.querySelectorAll(".panel");
 
 function showPanel(name) {
   panels.forEach((panel) => { panel.hidden = panel.id !== `panel-${name}`; });
   navButtons.forEach((btn) => btn.setAttribute("aria-pressed", String(btn.dataset.panel === name)));
+}
+
+// Other scripts open a panel with showPanel() in ../assets/panel-helpers.js,
+// which sends this event. Its detail is { name, gameId }.
+document.addEventListener("pickup:show-panel", (event) => showPanel(event.detail?.name ?? null));
+
+// Links in notifications open a panel: home.html?panel=rate&game=<id>.
+function openPanelFromLink() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("panel")) return;
+  document.dispatchEvent(new CustomEvent("pickup:show-panel", {
+    detail: { name: params.get("panel"), gameId: params.get("game") },
+  }));
 }
 
 navButtons.forEach((btn) => {
@@ -266,7 +282,7 @@ trackButton.addEventListener("click", () => {
   );
 });
 // My games tabs: only one is selected at a time.
-const tabs = document.querySelectorAll(".tabs button");
+const tabs = document.querySelectorAll("#panel-games .tabs button");
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     tabs.forEach((t) => t.setAttribute("aria-pressed", String(t === tab)));
