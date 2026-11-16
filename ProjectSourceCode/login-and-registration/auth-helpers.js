@@ -8,6 +8,16 @@ export const MAP_PAGE = "home.html";
 // Shown wherever a profile's photoURL is null.
 export const DEFAULT_PHOTO = "../assets/no-profile-picture-icon.svg";
 
+// Display names for sport IDs (same IDs as SPORTS in firebase/events.js).
+export const SPORT_NAMES = {
+  basketball: "Basketball",
+  soccer: "Soccer",
+  volleyball: "Volleyball",
+  tennis: "Tennis",
+  pickleball: "Pickleball",
+  football: "Football",
+};
+
 // The sign-up rules live in validateRegistration.js so they can be unit tested.
 export { MIN_PASSWORD_LENGTH, isValidEmail };
 
@@ -31,6 +41,8 @@ export function friendlyError(code) {
       return "Too many attempts. Please wait a moment and try again.";
     case "auth/network-request-failed":
       return "Network error. Check your connection and try again.";
+    case "auth/requires-recent-login":
+      return "For your security, log out and log back in, then try again.";
     case "storage/unauthorized":
       return "We couldn't upload that picture. Try a smaller PNG or JPEG, or skip it.";
     case "storage/retry-limit-exceeded":

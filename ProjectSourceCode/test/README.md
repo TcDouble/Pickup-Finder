@@ -15,6 +15,8 @@ requirement maps onto our app.
 | Positive `POST /register` test | `registerUser()`, the function the sign-up page calls, on the emulators | `registration.spec.js` |
 | Negative `POST /register` test (no password) | `registerUser()` with an empty password | `registration.spec.js` |
 | Test database whose name ends in `_test` | Emulators under the `demo-pickup-finder` project, which can't reach live Firebase | `emulator.js` |
+| Profile panel (not in the lab) | `validateProfile()` on its own; `saveProfile()`, `countGamesHosted()`, `sendPasswordReset()` and `deleteAccount()` on the emulators | `profile-validation.spec.js`, `profile.spec.js` |
+| Security rules for profiles | Every check in the `users` rule: owner-only writes and deletes, field types and lengths, unknown fields | `profile-rules.spec.js` |
 | Security rules for profile pictures | Every rule in `firebase/storage.rules`, tried as the owner, another user, and a signed-out visitor | `storage-rules.spec.js` |
 | Extra credit: positive and negative test for another feature | `createEvent()` (hosting a game): valid game, invalid player limit, signed-out visitor | `events.spec.js` |
 | `GET /welcome` test | Not needed: there is no server to greet | n/a |
