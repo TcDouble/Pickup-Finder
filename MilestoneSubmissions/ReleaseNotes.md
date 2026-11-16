@@ -2,9 +2,47 @@
 
 Last edited:
 
+- 2026-11-15 `<j01001000>`
 - 2026-11-11 `<j01001000>`
 - 2026-11-3 `<j01001000>`
 - 2026-10-30 `<j01001000>`
+
+## Week 14 — `November 18, 2026`
+
+### Added
+
+- Sportsmanship ratings and matchmaking back end (#25, issue #13). After a finished game, players rate each other positive or negative with an optional comment, and each player gets a public 0 to 100 score. Open games can be sorted by how close their players' scores are to yours. 57 new emulator tests. `<j01001000>`
+- Matchmaking notifications back end (#25, issue #17). Players choose email, text, or desktop notifications for a new game that fits their settings, a reminder an hour before a game, and a request to rate the players after it. Includes an in-app inbox and a Node.js notifier server in Docker that sends each notification once. 73 new tests. `<j01001000>`
+- Game pins on the home page map, loaded live from Firestore, with a popup showing the sport, place, time, and player count (#19). `<KUHN114514>`
+- "Start location tracking" button on the home page map. It shows your position on the map only and never saves it to Firestore. `<KUHN114514>`
+- Google Maps setup guide (`MAPS_SETUP.md`) and `maps-config.example.js`, so each person keeps the Maps key in a local file that Git ignores. `<KUHN114514>`
+- README sections for the project overview, features, tech stack, project structure, running the app, and Lab 10 testing. `<KUHN114514>`
+- Meeting notes for Week 13 and the Week 14 agenda. `<j01001000>`
+
+### Changed
+
+- Home page now requires login. It stays hidden until sign-in is checked, then sends a signed-out user to the login page and a user with no profile to registration. `<TcDouble>`
+- "+ Host a game" opens a create-game panel on the home page instead of going to a separate page. `<TcDouble>`
+- Login and registration pages no longer send a signed-in user away. They say who is signed in and only move on after the form is submitted. `<TcDouble>`
+- The Firestore rule for profiles now checks every profile field and lets players delete their own profile. Registration has matching length limits for name and city. 14 new tests; the Lab 10 test suite is now 47 tests. `<miner5758>`
+
+### Fixed
+
+- Notifier test image no longer has its `PATH` replaced by the host computer's `PATH`. `<miner5758>`
+
+### Planned for next week
+
+The checklist issue on the project board:
+- Matchmaking and Sportsmanship Rating (back end merged in PR #25; rating screens still to build) `https://github.com/TcDouble/Pickup-Finder/issues/13`
+- Matchmaking Notifications (back end merged in PR #25; settings and inbox screens still to build) `https://github.com/TcDouble/Pickup-Finder/issues/17`
+- Be able to create an event (the "+ Host a game" panel saves games; confirm what is left) `https://github.com/TcDouble/Pickup-Finder/issues/20`
+- To be able to edit an event `https://github.com/TcDouble/Pickup-Finder/issues/23`
+- Google Maps API (needs a test) `https://github.com/TcDouble/Pickup-Finder/issues/2`
+- Create a global style.css file for the website (check every page at phone width, then close) `https://github.com/TcDouble/Pickup-Finder/issues/15`
+- User Database (sign-up, login, and profiles work on main; close the issue) `https://github.com/TcDouble/Pickup-Finder/issues/5`
+- Menu Interactivity/Filters (the filter buttons don't filter games yet) `https://github.com/TcDouble/Pickup-Finder/issues/7`
+
+---
 
 ## Week 13 — `November 11, 2026`
 
