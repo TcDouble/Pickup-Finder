@@ -359,7 +359,7 @@ await markNotificationRead(items[0].id);
 The rules let signed-in users read games, feedback, and totals, and enforce, on Firestore's side:
 
 - A new game is hosted by its creator, starts with only the host, starts in the future, and passes the same field checks as `events.js`.
-- An RSVP adds exactly the signed-in user, once, and never past `playerLimit`. Writes to one game are applied one at a time, so two people can't both take the last spot.
+- An RSVP adds exactly the signed-in user, once, and never past `playerLimit`. Writes to one game are applied one at a time, so two people can't both take the last spot. The rules refuse the one who loses, and `events.js` then runs the RSVP again, so they get `events/full` instead of `permission-denied`.
 - Cancelling an RSVP removes only yourself, and the host can't leave.
 - Only the host edits or cancels, can't change the sport, host, or players, and can't set the limit below the players already going.
 - Cancelled and started games can't be changed, and nobody can delete a game.

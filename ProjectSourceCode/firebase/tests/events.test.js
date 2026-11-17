@@ -145,6 +145,20 @@ describe("RSVPs", () => {
     assert.equal(game.isFull, true);
   });
 
+  // All four read the game while it has one spot left, so the rules refuse the
+  // three who lose. They must hear "full", not "You don't have permission".
+  test("when four people race for the very last spot, the three who miss out hear it's full", async () => {
+    const id = await alice.createEvent(gameInput({ playerLimit: 2 }));
+    const results = await Promise.allSettled(
+      [bob, carol, dave, erin].map((user) => user.rsvpToEvent(id)),
+    );
+
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    const codes = results.filter((r) => r.status === "rejected").map((r) => r.reason.code);
+    assert.deepEqual(codes, ["events/full", "events/full", "events/full"]);
+    assert.equal((await alice.getEvent(id)).playerCount, 2);
+  });
+
   test("the host can't leave their own game", async () => {
     const id = await alice.createEvent(gameInput());
     await rejectsWith(alice.cancelRsvp(id), "events/host-cannot-leave");
