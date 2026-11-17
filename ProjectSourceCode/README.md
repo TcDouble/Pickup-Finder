@@ -164,6 +164,8 @@ You need Node 20 or newer, and Java 21 or newer for the local emulators. Run the
 | `npm run emulators` | Starts the local Auth and Firestore emulators, with the Emulator UI at http://127.0.0.1:4000. |
 | `npx firebase login`, then `npm run deploy:firestore` | Deploys the rules and indexes to the live project (`sport-pick-up-app-team-4`). You need access to the project in the Firebase console. |
 
+To deploy the Firestore rules, the indexes, and the Storage rules (profile pictures) together, run `npx firebase login`, then `npm run deploy:rules` from `ProjectSourceCode/` instead. It uses the Firebase CLI installed there, so `firebase/` needs no `npm install`.
+
 **Deploying the rules replaces all the rules in the project.** Any collection that isn't in `firestore.rules` becomes unreadable, so add a rule for each new collection before deploying, and run `npm test` first.
 
 The notifier has its own `npm test` and its own setup (a service account key and the email and text accounts). See [`notifier/README.md`](notifier/README.md).
