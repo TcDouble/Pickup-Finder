@@ -2,6 +2,7 @@
 
 Last edited:
 
+- 2026-11-16 `<j01001000>`
 - 2026-11-15 `<j01001000>`
 - 2026-11-11 `<j01001000>`
 - 2026-11-3 `<j01001000>`
@@ -13,6 +14,9 @@ Last edited:
 
 - Sportsmanship ratings and matchmaking back end (#25, issue #13). After a finished game, players rate each other positive or negative with an optional comment, and each player gets a public 0 to 100 score. Open games can be sorted by how close their players' scores are to yours. 57 new emulator tests. `<j01001000>`
 - Matchmaking notifications back end (#25, issue #17). Players choose email, text, or desktop notifications for a new game that fits their settings, a reminder an hour before a game, and a request to rate the players after it. Includes an in-app inbox and a Node.js notifier server in Docker that sends each notification once. 73 new tests. `<j01001000>`
+- Rate players, Notifications, and Recommended panels on the home page (#27, issues #13 and #17). Rate players lists your games from the last 14 days that still have players to rate. Notifications shows the live inbox and the notification settings. Recommended ranks open games by how close their players' sportsmanship scores are to yours, with a Join button on each game. 14 new unit tests; the Lab 10 test suite is now 84 tests. `<j01001000>`
+- Profile functions for the home page's Profile panel: save profile edits (name, city, sports and levels, bio, picture), count the games you host, email a password reset link, and delete your account after checking your password, which cancels upcoming games you host and takes you out of games you joined. No page calls them yet. 23 new tests. `<miner5758>`
+- `filters.js` for the home page filters (sport chips, time, skill level, and location search). `home.js` doesn't load it yet, so the filters don't change which games show. `<julianrayon-collab>`
 - Game pins on the home page map, loaded live from Firestore, with a popup showing the sport, place, time, and player count (#19). `<KUHN114514>`
 - "Start location tracking" button on the home page map. It shows your position on the map only and never saves it to Firestore. `<KUHN114514>`
 - Google Maps setup guide (`MAPS_SETUP.md`) and `maps-config.example.js`, so each person keeps the Maps key in a local file that Git ignores. `<KUHN114514>`
@@ -25,6 +29,7 @@ Last edited:
 - "+ Host a game" opens a create-game panel on the home page instead of going to a separate page. `<TcDouble>`
 - Login and registration pages no longer send a signed-in user away. They say who is signed in and only move on after the form is submitted. `<TcDouble>`
 - The Firestore rule for profiles now checks every profile field and lets players delete their own profile. Registration has matching length limits for name and city. 14 new tests; the Lab 10 test suite is now 47 tests. `<miner5758>`
+- Links in notification emails, texts, and desktop alerts now open the matching home page panel: a match alert opens Recommended with that game on top, a rating request opens Rate players for that game, and a reminder opens the inbox. `<j01001000>`
 
 ### Fixed
 
@@ -33,14 +38,13 @@ Last edited:
 ### Planned for next week
 
 The checklist issue on the project board:
-- Matchmaking and Sportsmanship Rating (back end merged in PR #25; rating screens still to build) `https://github.com/TcDouble/Pickup-Finder/issues/13`
-- Matchmaking Notifications (back end merged in PR #25; settings and inbox screens still to build) `https://github.com/TcDouble/Pickup-Finder/issues/17`
+- Matchmaking and Sportsmanship Rating (back end and screens merged in PRs #25 and #27; deploy the Firestore rules and indexes, test on the live site, then close) `https://github.com/TcDouble/Pickup-Finder/issues/13`
+- Matchmaking Notifications (back end and screens merged in PRs #25 and #27; deploy the Firestore rules and indexes, test on the live site, then close) `https://github.com/TcDouble/Pickup-Finder/issues/17`
 - Be able to create an event (the "+ Host a game" panel saves games; confirm what is left) `https://github.com/TcDouble/Pickup-Finder/issues/20`
 - To be able to edit an event `https://github.com/TcDouble/Pickup-Finder/issues/23`
 - Google Maps API (needs a test) `https://github.com/TcDouble/Pickup-Finder/issues/2`
 - Create a global style.css file for the website (check every page at phone width, then close) `https://github.com/TcDouble/Pickup-Finder/issues/15`
-- User Database (sign-up, login, and profiles work on main; close the issue) `https://github.com/TcDouble/Pickup-Finder/issues/5`
-- Menu Interactivity/Filters (the filter buttons don't filter games yet) `https://github.com/TcDouble/Pickup-Finder/issues/7`
+- Menu Interactivity/Filters (`filters.js` is merged; load it in `home.js` so the filters change which games show) `https://github.com/TcDouble/Pickup-Finder/issues/7`
 
 ---
 
