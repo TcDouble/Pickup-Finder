@@ -70,7 +70,7 @@ ProjectSourceCode/
 
 ### `users/{uid}`
 
-One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`login-and-registration/registration.js`](login-and-registration/registration.js)) creates it. Paul and Julian own this collection.
+One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`login-and-registration/registration.js`](login-and-registration/registration.js)) creates it, and the home page's Profile panel shows, edits, and deletes it through [`login-and-registration/profile.js`](login-and-registration/profile.js). Paul and Julian own this collection.
 
 Any signed-in player can read any profile (to show names next to games), so don't put private data here. The email address stays in Firebase Authentication only.
 
@@ -78,9 +78,15 @@ Any signed-in player can read any profile (to show names next to games), so don'
 | --- | --- | --- |
 | `displayName` | string | Also saved on the Auth account. |
 | `photoURL` | string or null | Download URL of the picture in Storage at `profilePictures/{uid}/avatar`, also saved on the Auth account. `null` means no picture: pages show [`assets/no-profile-picture-icon.svg`](assets/no-profile-picture-icon.svg) (`DEFAULT_PHOTO` in `auth-helpers.js`). |
-| `city` | string | |
+| `city` | string | Up to 60 characters. |
 | `sports` | array | Sport IDs, such as `basketball`. Same list as `SPORTS` in `events.js`. |
-| `createdAt` | timestamp | Set by the server. |
+| `sportLevels` | map | Optional. Sport ID to `casual` or `competitive`, for sports in `sports`. Set in Edit profile. |
+| `bio` | string | Optional. The profile's "About", up to 300 characters. |
+| `createdAt` | timestamp | Set by the server. Can't be changed. |
+
+The `users` rule checks every field's type and length (keep the limits in sync with `validateRegistration.js` and `validateProfile.js`), rejects any other field, and lets only the owner create, change, or delete their profile.
+
+Deleting an account (Profile panel → Delete account) cancels the player's upcoming hosted games, removes them from upcoming games they joined, and deletes their `notificationSettings`, picture, profile, and login. Past games, feedback, and sportsmanship totals stay, so other players' history doesn't change.
 
 Passwords are never stored in Firestore. Firebase Authentication keeps them.
 
@@ -320,7 +326,7 @@ Mitigation:
 
 - Deploy `firestore.rules` to replace test mode, as described in [Working with the database](#working-with-the-database).
 - The rules tests in `firebase/tests/rules.test.js` try the attacks directly: editing someone else's game, RSVPing another person, going over the player limit, and writing someone else's profile. Run `npm test` before every deploy.
-- Have the profile team tighten the `users` rule by checking each field's type and length.
+- The `users` rule checks each field's type and length and rejects unknown fields; `test/profile-rules.spec.js` tries the bad writes directly.
 - Never commit a service account key. If one is ever committed, delete the key in the Google Cloud console, because removing the file doesn't remove it from git history.
 
 ### 3. The data model doesn't match the wireframe or the pages
