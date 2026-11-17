@@ -6,7 +6,8 @@
   "scripts": {
     "test": "firebase emulators:exec --config firebase/firebase.json --only auth,firestore,storage --project demo-pickup-finder mocha",
     "test:unit": "mocha --no-config test/validation.spec.js test/panel-helpers.spec.js test/server.spec.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "deploy:rules": "firebase deploy --config firebase/firebase.json --project sport-pick-up-app-team-4 --only firestore,storage"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "3.0.4",
