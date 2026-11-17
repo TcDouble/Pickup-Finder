@@ -1,5 +1,6 @@
 # Meeting Notes — Team 012-4
 Last edited:
+- 2026-11-17 `<j01001000>`
 - 2026-11-12 `<j01001000>`
 - 2026-11-11 `<j01001000>`
 - 2026-11-4 `<j01001000>`
@@ -10,6 +11,10 @@ Last edited:
 ### Agenda
 
 - Project interview time: 11:55 AM or 1:35 PM on Thursday, Dec 3?
+- Since November 10, 2026, the notifier (notifier/) is a Node.js server of ours that runs in a Docker container and connects the database to email, text messages, and desktop notifications. The tests also run in containers (docker-compose.test.yaml). That covers part of both requirements, but the pages still don't go through a server and aren't served from a container.
+Ask the TA at the next weekly meeting whether Firebase plus the notifier counts as the server and database, and write the answer in the meeting minutes.
+If it doesn't count, the smallest fix is a small Node/Express server in a Docker container that serves the pages in ProjectSourceCode/, plus a docker-compose.yml that starts it. The pages and Firestore code stay the same.
+The Firebase emulators can also run in a container for local development, which would cover Docker for the database side.
 - Finish beta before Fall Break so that a port can be made to iOS over the break.
 
 ---
