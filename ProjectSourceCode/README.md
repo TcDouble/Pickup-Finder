@@ -33,6 +33,7 @@ Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN
 ```text
 ProjectSourceCode/
 ├── README.md                    # this file
+├── index.js                     # web server: serves the pages and the Maps key (Render runs it)
 ├── assets/
 │   ├── style.css                # global styles every page links (CU gold, black, grays)
 │   ├── panel-helpers.js         # shared helpers for the home page's Notifications, Recommended, and Rate players panels
@@ -388,7 +389,8 @@ Mitigation:
 
 - `rsvpToEvent` joins inside a Firestore transaction, so if the game changes while you're joining, it reads the game again and sees that it's full.
 - The security rules also refuse any RSVP that would go over `playerLimit`, and Firestore applies writes to one game one at a time. So even a request that skips `events.js` can't overfill a game.
-- A test has four people try for the last two spots at once, and checks that exactly two get in. A waitlist, if we add one, would need the same kind of test.
+- When several people try for the last spot at once, they all read the game while it has room, so the rules refuse everyone but the first. `events.js` then runs the RSVP again, which reads the game as it is now and tells them it's full instead of "You don't have permission to do that" (fixed November 17, 2026).
+- Tests have four people try for the last two spots, and for the very last spot, at once, and check that the right number get in and the rest are told the game is full. A waitlist, if we add one, would need the same kind of test.
 
 ### 9. Dates and times come out wrong
 
