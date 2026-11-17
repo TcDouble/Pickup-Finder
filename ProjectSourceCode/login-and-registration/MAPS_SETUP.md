@@ -1,5 +1,18 @@
 # Home page map setup
 
+The quickest way is the web server in `ProjectSourceCode/index.js`, which
+serves the key from the `MAPS_API_KEY` environment variable (this is also how
+Render gets it):
+
+```sh
+cd ProjectSourceCode
+npm install
+PORT=5500 MAPS_API_KEY=<your key> npm start
+```
+
+Then open `http://localhost:5500/` and sign in. To use a static server
+instead, follow these steps:
+
 1. Copy `maps-config.example.js` to `maps-config.local.js` in this folder.
 2. Replace `YOUR_GOOGLE_MAPS_API_KEY` in the local file with your own key.
    Enable Maps JavaScript API and billing in the associated Google Cloud project.

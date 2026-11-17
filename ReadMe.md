@@ -66,7 +66,7 @@ Not deployed yet. The link will be added here once the app is deployed.
 To run the app:
 
 - A modern web browser.
-- Python 3, or any other static file server, to serve the pages.
+- Node.js 20 or newer, to run the web server (`ProjectSourceCode/index.js`). Python 3 or any other static file server also works.
 - Your own Google Maps JavaScript API key (see `ProjectSourceCode/login-and-registration/MAPS_SETUP.md`).
 
 To run the tests or the notifier:
@@ -78,6 +78,7 @@ To run the tests or the notifier:
 ## Project Structure
 
 - `ProjectSourceCode/` — Main application source code
+- `ProjectSourceCode/index.js` — Web server that serves the pages and the Google Maps key (what Render runs)
 - `ProjectSourceCode/login-and-registration/` — Login, registration, and home pages, with the map
 - `ProjectSourceCode/create-game/` — Game creation functionality
 - `ProjectSourceCode/recommended/`, `rate-players/`, `notifications/` — Home page panels for recommended games, sportsmanship ratings, and notifications
@@ -94,8 +95,8 @@ To run the tests or the notifier:
 ## Running the Application Locally
 
 1. Clone the repository: `git clone https://github.com/TcDouble/Pickup-Finder.git`
-2. In `ProjectSourceCode/login-and-registration/`, copy `maps-config.example.js` to `maps-config.local.js` and put your Google Maps API key in it. Git ignores this file, so never commit it. The home page needs this file to load the map.
-3. From the repository root, start a local web server: `python3 -m http.server 5500 --directory ProjectSourceCode`
+2. In `ProjectSourceCode/`, run `npm install`, then start the web server with your Google Maps API key: `PORT=5500 MAPS_API_KEY=<your key> npm start`. The server reads the key from `MAPS_API_KEY`, so it's never saved in the repository.
+3. Or, without Node: in `ProjectSourceCode/login-and-registration/`, copy `maps-config.example.js` to `maps-config.local.js` and put your key in it (Git ignores this file, so never commit it), then run `python3 -m http.server 5500 --directory ProjectSourceCode` from the repository root.
 4. Open `http://localhost:5500/login-and-registration/registration.html` in your browser to create an account, or `http://localhost:5500/login-and-registration/login.html` to sign in.
 
 The application requires its Firebase configuration and the appropriate Google Maps API configuration. The Firebase configuration is already in `ProjectSourceCode/firebase/firebase-config.js` and points to the team's live Firebase project, so accounts and games you create locally are real data. Use port 5500, because the Maps key should be restricted to `http://localhost:5500/*`, and open the pages through the server rather than as files.
@@ -106,7 +107,7 @@ The notifier is optional for running the app. To set it up, see `ProjectSourceCo
 
 The project uses automated tests to verify registration functionality, Firebase security rules, profile picture handling, profile functions, the home page panels, and game creation.
 
-Tests run against Firebase Emulators to prevent modifications to production data. The suite has 84 tests as of November 16, 2026.
+Tests run against Firebase Emulators to prevent modifications to production data. The suite has 90 tests as of November 17, 2026.
 
 ### Running Tests Locally
 
@@ -116,7 +117,7 @@ From the `ProjectSourceCode` directory:
 
 1. Run `npm ci` to install dependencies.
 2. Run `npm test` to execute the complete test suite.
-3. Alternatively, run `npm run test:unit` to execute the unit tests for registration validation and the home page panels. These don't need Java or the emulators.
+3. Alternatively, run `npm run test:unit` to execute the unit tests for registration validation, the home page panels, and the web server. These don't need Java or the emulators.
 
 ### Running Tests with Docker
 
