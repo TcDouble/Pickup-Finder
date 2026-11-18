@@ -33,10 +33,15 @@ Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN
 ```text
 ProjectSourceCode/
 ├── README.md                    # this file
+├── index.js                     # web server: serves the pages and the Maps key (Render runs it)
 ├── assets/
 │   ├── style.css                # global styles every page links (CU gold, black, grays)
+│   ├── panel-helpers.js         # shared helpers for the home page's Notifications, Recommended, and Rate players panels
 │   └── no-profile-picture-icon.* # default profile picture
 ├── create-game/                 # host-a-game page
+├── notifications/               # home page panel: notification inbox and settings
+├── recommended/                 # home page panel: recommended games (matchmaking), with Join
+├── rate-players/                # home page panel: rate the other players after a game
 ├── firebase/
 │   ├── firebase-config.js       # shared setup: exports app, auth, db, storage
 │   ├── storage.rules            # security rules for profile pictures
@@ -65,7 +70,7 @@ ProjectSourceCode/
 
 ### `users/{uid}`
 
-One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`login-and-registration/registration.js`](login-and-registration/registration.js)) creates it. Paul and Julian own this collection.
+One profile per account, keyed by the user's Firebase Auth ID. The registration page ([`login-and-registration/registration.js`](login-and-registration/registration.js)) creates it, and the home page's Profile panel shows, edits, and deletes it through [`login-and-registration/profile.js`](login-and-registration/profile.js). Paul and Julian own this collection.
 
 Any signed-in player can read any profile (to show names next to games), so don't put private data here. The email address stays in Firebase Authentication only.
 
@@ -73,9 +78,15 @@ Any signed-in player can read any profile (to show names next to games), so don'
 | --- | --- | --- |
 | `displayName` | string | Also saved on the Auth account. |
 | `photoURL` | string or null | Download URL of the picture in Storage at `profilePictures/{uid}/avatar`, also saved on the Auth account. `null` means no picture: pages show [`assets/no-profile-picture-icon.svg`](assets/no-profile-picture-icon.svg) (`DEFAULT_PHOTO` in `auth-helpers.js`). |
-| `city` | string | |
+| `city` | string | Up to 60 characters. |
 | `sports` | array | Sport IDs, such as `basketball`. Same list as `SPORTS` in `events.js`. |
-| `createdAt` | timestamp | Set by the server. |
+| `sportLevels` | map | Optional. Sport ID to `casual` or `competitive`, for sports in `sports`. Set in Edit profile. |
+| `bio` | string | Optional. The profile's "About", up to 300 characters. |
+| `createdAt` | timestamp | Set by the server. Can't be changed. |
+
+The `users` rule checks every field's type and length (keep the limits in sync with `validateRegistration.js` and `validateProfile.js`), rejects any other field, and lets only the owner create, change, or delete their profile.
+
+Deleting an account (Profile panel → Delete account) cancels the player's upcoming hosted games, removes them from upcoming games they joined, and deletes their `notificationSettings`, picture, profile, and login. Past games, feedback, and sportsmanship totals stay, so other players' history doesn't change.
 
 Passwords are never stored in Firestore. Firebase Authentication keeps them.
 
@@ -159,6 +170,8 @@ You need Node 20 or newer, and Java 21 or newer for the local emulators. Run the
 | `npm run emulators` | Starts the local Auth and Firestore emulators, with the Emulator UI at http://127.0.0.1:4000. |
 | `npx firebase login`, then `npm run deploy:firestore` | Deploys the rules and indexes to the live project (`sport-pick-up-app-team-4`). You need access to the project in the Firebase console. |
 
+To deploy the Firestore rules, the indexes, and the Storage rules (profile pictures) together, run `npx firebase login`, then `npm run deploy:rules` from `ProjectSourceCode/` instead. It uses the Firebase CLI installed there, so `firebase/` needs no `npm install`.
+
 **Deploying the rules replaces all the rules in the project.** Any collection that isn't in `firestore.rules` becomes unreadable, so add a rule for each new collection before deploying, and run `npm test` first.
 
 The notifier has its own `npm test` and its own setup (a service account key and the email and text accounts). See [`notifier/README.md`](notifier/README.md).
@@ -179,7 +192,7 @@ These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requ
 | Map integration | Each game stores `lat` and `lng`, and `listEvents` finds games inside the map's view or within a distance | Built |
 | Real-time updates | `watchEvents` and `watchEvent` update the page as soon as a game changes | Built |
 | Media storage for profile and event images | Profile pictures upload to Cloud Storage at registration, and the URL is saved on the profile. [`firebase/storage.rules`](firebase/storage.rules) lets only the owner write their picture (PNG, JPEG, WebP or GIF, up to 2 MB). Event images aren't done. | Partly built |
-| Notifications | Match alerts, a reminder an hour before each game, and a request to rate the players after it, by email, text message, or desktop notification, whichever the player chooses ([`firebase/notifications.js`](firebase/notifications.js) and [`notifier/`](notifier/), GitHub issue #17). No settings page or inbox page yet. | Built (back end) |
+| Notifications | Match alerts, a reminder an hour before each game, and a request to rate the players after it, by email, text message, or desktop notification, whichever the player chooses ([`firebase/notifications.js`](firebase/notifications.js) and [`notifier/`](notifier/), GitHub issue #17). The Notifications panel on the home page shows the inbox and the settings. | Built |
 | Removing past events and enforcing other rules | The security rules enforce the player limit and host-only edits. Searches only return games that haven't started, so past games drop off the map. Nothing deletes old games yet. | Partly built |
 | User info only editable by its owner | The `users` rule only lets you write your own profile | Built |
 
@@ -313,7 +326,7 @@ Mitigation:
 
 - Deploy `firestore.rules` to replace test mode, as described in [Working with the database](#working-with-the-database).
 - The rules tests in `firebase/tests/rules.test.js` try the attacks directly: editing someone else's game, RSVPing another person, going over the player limit, and writing someone else's profile. Run `npm test` before every deploy.
-- Have the profile team tighten the `users` rule by checking each field's type and length.
+- The `users` rule checks each field's type and length and rejects unknown fields; `test/profile-rules.spec.js` tries the bad writes directly.
 - Never commit a service account key. If one is ever committed, delete the key in the Google Cloud console, because removing the file doesn't remove it from git history.
 
 ### 3. The data model doesn't match the wireframe or the pages
@@ -384,7 +397,8 @@ Mitigation:
 
 - `rsvpToEvent` joins inside a Firestore transaction, so if the game changes while you're joining, it reads the game again and sees that it's full.
 - The security rules also refuse any RSVP that would go over `playerLimit`, and Firestore applies writes to one game one at a time. So even a request that skips `events.js` can't overfill a game.
-- A test has four people try for the last two spots at once, and checks that exactly two get in. A waitlist, if we add one, would need the same kind of test.
+- When several people try for the last spot at once, they all read the game while it has room, so the rules refuse everyone but the first. `events.js` then runs the RSVP again, which reads the game as it is now and tells them it's full instead of "You don't have permission to do that" (fixed November 17, 2026).
+- Tests have four people try for the last two spots, and for the very last spot, at once, and check that the right number get in and the rest are told the game is full. A waitlist, if we add one, would need the same kind of test.
 
 ### 9. Dates and times come out wrong
 

@@ -60,11 +60,20 @@
         <button type="button" data-panel="notifications" aria-pressed="false">
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
           <span class="grow">Notifications</span>
-          <span class="badge">3</span>
+          <span class="badge" id="inbox-badge" hidden></span>
+        </button>
+        <button type="button" data-panel="recommended" aria-pressed="false">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg>
+          <span>Recommended</span>
         </button>
         <button type="button" data-panel="games" aria-pressed="false">
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
           <span>My games</span>
+        </button>
+        <button type="button" data-panel="rate" aria-pressed="false">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11M15 5.9 14 10h5.8a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 18.5 21H7V10l4-8a3 3 0 0 1 4 3.9z"></path></svg>
+          <span class="grow">Rate players</span>
+          <span class="badge" id="rate-badge" hidden></span>
         </button>
         <button type="button" data-panel="profile" aria-pressed="false">
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
@@ -172,34 +181,178 @@
         </form>
       </section>
 
+      <!-- Inbox and notification settings; ../notifications/notifications-panel.js runs it. -->
       <section class="panel" id="panel-notifications" aria-label="Notifications" hidden>
         <div class="panel-head">
           <div class="panel-title">
             <div class="eyebrow">Notifications</div>
-            <h2>3 new</h2>
+            <h2 id="inbox-heading">Inbox</h2>
           </div>
           <button type="button" class="close-btn" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
 
-        <div class="list">
-          <div class="list-item">
-            <div class="list-icon round" aria-hidden="true"></div>
-            <div class="list-text"><strong>[Host name] messaged you</strong><span class="muted">[“Still need one more — you coming?”]</span></div>
-            <span class="time">[5m]</span>
-          </div>
-          <div class="list-item">
-            <div class="list-icon" aria-hidden="true"></div>
-            <div class="list-text"><strong>Game starts in 1 hour</strong><span class="muted">[Pickup Basketball · Park / court name]</span></div>
-            <span class="time">[1h]</span>
-          </div>
-          <div class="list-item">
-            <div class="list-icon dashed" aria-hidden="true"></div>
-            <div class="list-text"><strong>New game near you</strong><span class="muted">[Soccer · Saturday 10:00 AM]</span></div>
-            <span class="time">[3h]</span>
-          </div>
+        <div class="tabs">
+          <button type="button" data-view="inbox" aria-pressed="true">Inbox</button>
+          <button type="button" data-view="settings" aria-pressed="false">Settings</button>
         </div>
 
-        <button type="button" class="btn push-down">Mark all as read</button>
+        <div class="panel-view" id="inbox-view">
+          <div class="list" id="inbox-list"></div>
+          <p id="inbox-message" class="message" role="alert" aria-live="polite"></p>
+          <button type="button" class="btn push-down" id="mark-all-read" hidden>Mark all as read</button>
+        </div>
+
+        <form id="notify-form" class="panel-form" novalidate hidden>
+          <fieldset>
+            <legend>How to reach you</legend>
+            <span class="hint">Everything also shows up in your inbox here.</span>
+            <label class="check"><input type="checkbox" id="notify-email"> Email <span class="hint" id="notify-email-address"></span></label>
+            <label class="check"><input type="checkbox" id="notify-sms"> Text message</label>
+            <label class="check"><input type="checkbox" id="notify-desktop"> Desktop notifications <span class="hint" id="notify-desktop-note"></span></label>
+          </fieldset>
+
+          <div class="field">
+            <label for="notify-phone">Phone for texts</label>
+            <input id="notify-phone" type="text" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="303 555 0100">
+            <span class="hint">US numbers don't need +1. Others need their country code.</span>
+          </div>
+
+          <fieldset>
+            <legend>What to tell you about</legend>
+            <label class="check"><input type="checkbox" id="notify-reminders"> A reminder an hour before my games</label>
+            <label class="check"><input type="checkbox" id="notify-feedback"> A reminder to rate the players after a game</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>New games that fit me</legend>
+            <span class="hint">Pick at least one sport to get alerts, at most 3 a day.</span>
+            <div class="chips">
+              <label class="chip"><input type="checkbox" name="alert-sport" value="basketball"> Basketball</label>
+              <label class="chip"><input type="checkbox" name="alert-sport" value="soccer"> Soccer</label>
+              <label class="chip"><input type="checkbox" name="alert-sport" value="volleyball"> Volleyball</label>
+              <label class="chip"><input type="checkbox" name="alert-sport" value="tennis"> Tennis</label>
+              <label class="chip"><input type="checkbox" name="alert-sport" value="pickleball"> Pickleball</label>
+              <label class="chip"><input type="checkbox" name="alert-sport" value="football"> Football</label>
+            </div>
+          </fieldset>
+
+          <div class="grid-2">
+            <div class="field">
+              <label for="alert-skill">Skill level</label>
+              <select id="alert-skill">
+                <option value="any">Any level</option>
+                <option value="casual">Casual</option>
+                <option value="competitive">Competitive</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="alert-distance">Distance</label>
+              <select id="alert-distance">
+                <option value="">Anywhere</option>
+                <option value="1">Within 1 mi</option>
+                <option value="3">Within 3 mi</option>
+                <option value="5">Within 5 mi</option>
+                <option value="10">Within 10 mi</option>
+                <option value="25">Within 25 mi</option>
+                <option value="50">Within 50 mi</option>
+              </select>
+            </div>
+          </div>
+          <div class="locate">
+            <button type="button" class="btn small" id="alert-use-location" hidden>Use my location</button>
+            <span id="alert-center" class="coords" aria-live="polite">Games anywhere.</span>
+          </div>
+
+          <div class="field">
+            <label for="alert-score">Only games where every player's sportsmanship score is</label>
+            <select id="alert-score">
+              <option value="0">Any score</option>
+              <option value="50">50 or higher</option>
+              <option value="70">70 or higher</option>
+              <option value="80">80 or higher</option>
+              <option value="90">90 or higher</option>
+            </select>
+          </div>
+
+          <p id="notify-message" class="message" role="alert" aria-live="polite"></p>
+          <button type="submit" id="notify-save" class="btn primary big" disabled>Save settings</button>
+        </form>
+      </section>
+
+      <!-- Matchmaking; ../recommended/recommended.js runs it. -->
+      <section class="panel" id="panel-recommended" aria-label="Recommended games" hidden>
+        <div class="panel-head">
+          <div class="panel-title">
+            <div class="eyebrow">Recommended</div>
+            <h2>Games for you</h2>
+          </div>
+          <button type="button" class="close-btn" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <p class="panel-intro muted">Upcoming games with room for you. Games whose players' sportsmanship score is closest to yours come first.</p>
+        <span class="tag" id="rec-my-score">Your sportsmanship score: …</span>
+
+        <form class="panel-form" onsubmit="return false">
+          <div class="grid-2">
+            <div class="field">
+              <label for="rec-sport">Sport</label>
+              <select id="rec-sport">
+                <option value="">Any sport</option>
+                <option value="basketball">Basketball</option>
+                <option value="soccer">Soccer</option>
+                <option value="volleyball">Volleyball</option>
+                <option value="tennis">Tennis</option>
+                <option value="pickleball">Pickleball</option>
+                <option value="football">Football</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="rec-distance">Distance</label>
+              <select id="rec-distance">
+                <option value="">Anywhere</option>
+                <option value="1">Within 1 mi</option>
+                <option value="3">Within 3 mi</option>
+                <option value="5">Within 5 mi</option>
+                <option value="10">Within 10 mi</option>
+                <option value="25">Within 25 mi</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="rec-score">Only games where every player's score is</label>
+            <select id="rec-score">
+              <option value="0">Any score</option>
+              <option value="50">50 or higher</option>
+              <option value="70">70 or higher</option>
+              <option value="80">80 or higher</option>
+              <option value="90">90 or higher</option>
+            </select>
+          </div>
+        </form>
+
+        <p id="rec-message" class="message" role="alert" aria-live="polite"></p>
+        <div class="list-text gap-10" id="rec-focus" hidden></div>
+        <div class="list-text gap-10" id="rec-list"></div>
+      </section>
+
+      <!-- Sportsmanship ratings; ../rate-players/rate-players.js runs it. -->
+      <section class="panel" id="panel-rate" aria-label="Rate players" hidden>
+        <div class="panel-head">
+          <div class="panel-title">
+            <div class="eyebrow">Rate players</div>
+            <h2 id="rate-heading">Your recent games</h2>
+          </div>
+          <button type="button" class="close-btn" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <p class="panel-intro muted" id="rate-intro">After a game, rate each player positive or negative. Ratings make up everyone's sportsmanship score, which Recommended uses to match players.</p>
+
+        <p id="rate-message" class="message" role="alert" aria-live="polite"></p>
+        <div class="list-text gap-10" id="rate-games"></div>
+
+        <div class="list-text gap-10" id="rate-game" hidden>
+          <button type="button" class="link-btn" id="rate-back">← All recent games</button>
+          <div id="rate-game-summary"></div>
+          <div class="list" id="rate-players"></div>
+        </div>
       </section>
 
       <section class="panel" id="panel-games" aria-label="My games" hidden>
@@ -242,43 +395,131 @@
           <button type="button" class="close-btn" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
 
-        <div class="profile-top">
-          <div class="avatar" role="img" aria-label="Profile photo"></div>
-          <div class="list-text">
-            <h2>[Your name]</h2>
-            <span class="muted">[Neighborhood · Member since 2026]</span>
+        <div class="panel-body" id="profile-view">
+          <div class="profile-top">
+            <img id="profile-photo" class="avatar" src="../assets/no-profile-picture-icon.svg" alt="Your profile picture" width="80" height="80">
+            <div class="list-text">
+              <h2 id="profile-name">Loading…</h2>
+              <span class="muted" id="profile-meta"></span>
+            </div>
           </div>
-        </div>
 
-        <div class="stats">
-          <div class="stat"><strong>[#]</strong><span>Games played</span></div>
-          <div class="stat"><strong>[#]</strong><span>Hosted</span></div>
-          <div class="stat"><strong>[%]</strong><span>Show-up rate</span></div>
-        </div>
-
-        <div class="list-text gap-8">
-          <span class="section-label">Sports</span>
-          <div class="tags">
-            <span class="tag">Basketball · [Casual]</span>
-            <span class="tag">Soccer · [Competitive]</span>
+          <div class="stats">
+            <div class="stat"><strong id="stat-played">–</strong><span>Games played</span></div>
+            <div class="stat"><strong id="stat-hosted">–</strong><span>Hosted</span></div>
+            <div class="stat"><strong id="stat-score">–</strong><span>Sportsmanship</span></div>
           </div>
+
+          <div class="list-text gap-8">
+            <span class="section-label">Sports</span>
+            <div class="tags" id="profile-sports"></div>
+          </div>
+
+          <div class="list-text gap-6">
+            <span class="section-label">About</span>
+            <p class="bio" id="profile-bio"></p>
+          </div>
+
+          <p id="profile-message" class="message" role="status" aria-live="polite"></p>
+
+          <div class="row push-down">
+            <button type="button" class="btn big dark" id="edit-profile-btn">Edit profile</button>
+            <button type="button" class="btn big">Settings</button>
+          </div>
+          <div class="row">
+            <button type="button" class="btn" id="reset-password-btn">Reset password</button>
+            <button type="button" class="btn" id="logout-btn">Log out</button>
+          </div>
+          <button type="button" class="link-btn danger" id="delete-account-btn">Delete account</button>
         </div>
 
-        <div class="list-text gap-6">
-          <span class="section-label">About</span>
-          <p class="bio">[Short bio — usual availability, positions played, etc.]</p>
-        </div>
+        <form class="panel-body" id="profile-form" novalidate hidden>
+          <h2>Edit profile</h2>
 
-        <div class="row push-down">
-          <button type="button" class="btn big dark">Edit profile</button>
-          <button type="button" class="btn big">Settings</button>
-        </div>
-        <button type="button" class="btn" id="logout-btn">Log out</button>
+          <div class="field">
+            <label for="edit-photo">Profile picture</label>
+            <div class="photo-row">
+              <img id="edit-photo-preview" class="avatar" src="../assets/no-profile-picture-icon.svg" alt="Your profile picture" width="80" height="80">
+              <div class="photo-actions">
+                <input id="edit-photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+                <button type="button" id="edit-photo-remove" class="link-btn">Remove picture</button>
+                <span class="hint">PNG, JPEG, WebP or GIF, up to 2 MB.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="edit-name">Display name</label>
+            <input id="edit-name" type="text" maxlength="30" autocomplete="nickname">
+          </div>
+
+          <div class="field">
+            <label for="edit-city">City</label>
+            <input id="edit-city" type="text" maxlength="60" autocomplete="address-level2">
+          </div>
+
+          <fieldset>
+            <legend>Sports and level</legend>
+            <div class="sport-row">
+              <label class="chip"><input type="checkbox" name="sports" value="basketball"> Basketball</label>
+              <select name="level-basketball" aria-label="Basketball level"><option value="casual">Casual</option><option value="competitive">Competitive</option></select>
+            </div>
+            <div class="sport-row">
+              <label class="chip"><input type="checkbox" name="sports" value="soccer"> Soccer</label>
+              <select name="level-soccer" aria-label="Soccer level"><option value="casual">Casual</option><option value="competitive">Competitive</option></select>
+            </div>
+            <div class="sport-row">
+              <label class="chip"><input type="checkbox" name="sports" value="volleyball"> Volleyball</label>
+              <select name="level-volleyball" aria-label="Volleyball level"><option value="casual">Casual</option><option value="competitive">Competitive</option></select>
+            </div>
+            <div class="sport-row">
+              <label class="chip"><input type="checkbox" name="sports" value="tennis"> Tennis</label>
+              <select name="level-tennis" aria-label="Tennis level"><option value="casual">Casual</option><option value="competitive">Competitive</option></select>
+            </div>
+            <div class="sport-row">
+              <label class="chip"><input type="checkbox" name="sports" value="pickleball"> Pickleball</label>
+              <select name="level-pickleball" aria-label="Pickleball level"><option value="casual">Casual</option><option value="competitive">Competitive</option></select>
+            </div>
+            <div class="sport-row">
+              <label class="chip"><input type="checkbox" name="sports" value="football"> Football</label>
+              <select name="level-football" aria-label="Football level"><option value="casual">Casual</option><option value="competitive">Competitive</option></select>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label for="edit-bio">About</label>
+            <textarea id="edit-bio" maxlength="300" placeholder="Usual availability, positions you play, etc."></textarea>
+            <span class="hint" id="edit-bio-count">0 / 300</span>
+          </div>
+
+          <p id="edit-message" class="message" role="alert" aria-live="polite"></p>
+          <div class="row push-down">
+            <button type="submit" class="btn big primary" id="save-profile-btn">Save</button>
+            <button type="button" class="btn big" id="cancel-edit-btn">Cancel</button>
+          </div>
+        </form>
+
+        <form class="panel-body" id="delete-form" novalidate hidden>
+          <h2>Delete account</h2>
+          <p class="bio">This deletes your profile, picture and login. Upcoming games you host are cancelled, and you leave games you joined. This can't be undone.</p>
+          <div class="field">
+            <label for="delete-password">Enter your password to confirm</label>
+            <input id="delete-password" type="password" autocomplete="current-password">
+          </div>
+          <p id="delete-message" class="message" role="alert" aria-live="polite"></p>
+          <div class="row push-down">
+            <button type="submit" class="btn big danger" id="confirm-delete-btn">Delete account</button>
+            <button type="button" class="btn big" id="cancel-delete-btn">Cancel</button>
+          </div>
+        </form>
       </section>
     </main>
   </div>
 
   <script type="module" src="home.js"></script>
   <script type="module" src="../create-game/create-game.js"></script>
+  <script type="module" src="../notifications/notifications-panel.js"></script>
+  <script type="module" src="../recommended/recommended.js"></script>
+  <script type="module" src="../rate-players/rate-players.js"></script>
 </body>
 </html>

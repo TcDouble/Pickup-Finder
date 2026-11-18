@@ -5,7 +5,9 @@
   "description": "Pickup-Finder web pages and the Lab 10 test suite (Mocha and Chai on the Firebase emulators)",
   "scripts": {
     "test": "firebase emulators:exec --config firebase/firebase.json --only auth,firestore,storage --project demo-pickup-finder mocha",
-    "test:unit": "mocha --no-config test/validation.spec.js"
+    "test:unit": "mocha --no-config test/validation.spec.js test/panel-helpers.spec.js test/server.spec.js",
+    "start": "node index.js",
+    "deploy:rules": "firebase deploy --config firebase/firebase.json --project sport-pick-up-app-team-4 --only firestore,storage"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "3.0.4",
@@ -14,5 +16,8 @@
     "firebase": "10.12.2",
     "firebase-tools": "14.27.0",
     "mocha": "10.8.2"
+  },
+  "dependencies": {
+    "express": "5.2.1"
   }
 }

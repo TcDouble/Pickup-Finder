@@ -25,14 +25,34 @@ service cloud.firestore {
     }
 
     // ------------------------------------------------------------------
-    // users/{uid}: profiles written by the registration page.
-    // Minimal rule so registration keeps working; the profile team should
-    // tighten it (field validation, what other users may see).
+    // users/{uid}: profiles. Created at registration, changed by Edit
+    // profile, deleted by Delete account. Any signed-in player can read
+    // them, so they hold nothing private (the email stays in Auth).
+    // Keep the limits in sync with validateRegistration.js and
+    // validateProfile.js.
     // ------------------------------------------------------------------
     match /users/{userId} {
+      function validProfile(p) {
+        return p.keys().hasOnly(['displayName', 'photoURL', 'city', 'sports',
+                                 'sportLevels', 'bio', 'createdAt'])
+          && p.displayName is string && p.displayName.size() > 0 && p.displayName.size() <= 30
+          && (!('photoURL' in p) || p.photoURL == null || p.photoURL is string)
+          && (!('city' in p) || (p.city is string && p.city.size() <= 60))
+          && (!('sports' in p) || (p.sports is list && p.sports.hasOnly(sports())))
+          && (!('sportLevels' in p) || (p.sportLevels is map
+                && p.sportLevels.keys().hasOnly(sports())
+                && p.sportLevels.values().hasOnly(['casual', 'competitive'])))
+          && (!('bio' in p) || (p.bio is string && p.bio.size() <= 300))
+          && (!('createdAt' in p) || p.createdAt is timestamp);
+      }
+
       allow read: if signedIn();
-      allow create, update: if signedIn() && request.auth.uid == userId;
-      allow delete: if false;
+      allow create: if signedIn() && request.auth.uid == userId
+        && validProfile(request.resource.data);
+      allow update: if signedIn() && request.auth.uid == userId
+        && validProfile(request.resource.data)
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
+      allow delete: if signedIn() && request.auth.uid == userId;
     }
 
     // ------------------------------------------------------------------

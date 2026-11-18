@@ -5,6 +5,8 @@ import {
   validateRegistration,
   MIN_PASSWORD_LENGTH,
   MAX_PHOTO_BYTES,
+  MAX_NAME,
+  MAX_CITY,
 } from "../login-and-registration/validateRegistration.js";
 
 const good = {
@@ -63,6 +65,16 @@ describe("validateRegistration (unit)", () => {
   it("skips email and password when an already signed-in user is finishing their profile", () => {
     const result = validateRegistration({ displayName: "Riley" }, { needsCredentials: false });
     expect(result.valid).to.equal(true);
+  });
+
+  it(`rejects a display name over ${MAX_NAME} characters`, () => {
+    const result = validateRegistration({ ...good, displayName: "x".repeat(MAX_NAME + 1) });
+    expect(result.errors).to.deep.equal([`Display name must be ${MAX_NAME} characters or fewer.`]);
+  });
+
+  it(`rejects a city over ${MAX_CITY} characters`, () => {
+    const result = validateRegistration({ ...good, city: "x".repeat(MAX_CITY + 1) });
+    expect(result.errors).to.deep.equal([`City must be ${MAX_CITY} characters or fewer.`]);
   });
 
   describe("profile picture", () => {

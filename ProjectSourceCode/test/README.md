@@ -4,7 +4,8 @@ Automated tests for Pickup-Finder, written with Mocha and Chai and run against
 the Firebase Auth, Firestore and Storage emulators.
 
 Lab 10 is written for an Express server with PostgreSQL and a `POST /register`
-route. Our app has no server: the pages talk to Firebase directly. The TA
+route. Our pages talk to Firebase directly, and our Express server
+(`index.js`) only serves the pages, so there's no `/register` route. The TA
 approved using Firebase and adapting the tests so they check the same things
 (confirmed with the team on 2026-11-08). This file explains how each lab
 requirement maps onto our app.
@@ -15,9 +16,11 @@ requirement maps onto our app.
 | Positive `POST /register` test | `registerUser()`, the function the sign-up page calls, on the emulators | `registration.spec.js` |
 | Negative `POST /register` test (no password) | `registerUser()` with an empty password | `registration.spec.js` |
 | Test database whose name ends in `_test` | Emulators under the `demo-pickup-finder` project, which can't reach live Firebase | `emulator.js` |
+| Profile panel (not in the lab) | `validateProfile()` on its own; `saveProfile()`, `countGamesHosted()`, `sendPasswordReset()` and `deleteAccount()` on the emulators | `profile-validation.spec.js`, `profile.spec.js` |
+| Security rules for profiles | Every check in the `users` rule: owner-only writes and deletes, field types and lengths, unknown fields | `profile-rules.spec.js` |
 | Security rules for profile pictures | Every rule in `firebase/storage.rules`, tried as the owner, another user, and a signed-out visitor | `storage-rules.spec.js` |
 | Extra credit: positive and negative test for another feature | `createEvent()` (hosting a game): valid game, invalid player limit, signed-out visitor | `events.spec.js` |
-| `GET /welcome` test | Not needed: there is no server to greet | n/a |
+| `GET /welcome` test | `GET /welcome` on `index.js`, the small web server that serves the pages on Render, plus its other routes and the Maps key | `server.spec.js` |
 
 ## Registration contract
 
@@ -68,7 +71,7 @@ Needs Node 20 or newer and Java 21 or newer (the emulators run on Java).
 cd ProjectSourceCode
 npm ci           # first time, and after package.json changes
 npm test         # starts the emulators, runs every *.spec.js, stops them
-npm run test:unit  # only the unit test; no emulators or Java needed
+npm run test:unit  # only the unit tests and the server test; no emulators or Java needed
 ```
 
 ### In Docker (what the lab asks for)

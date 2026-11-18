@@ -141,7 +141,7 @@ describe("game reminders", () => {
     assert.equal(alices.type, "reminder");
     assert.equal(alices.eventId, game);
     assert.equal(alices.readAt, null);
-    assert.equal(alices.link, `https://pickup.example.com/game.html?id=${game}`);
+    assert.equal(alices.link, "https://pickup.example.com/login-and-registration/home.html?panel=notifications");
     assert.deepEqual(alices.delivery, { email: "sent", sms: "sent", desktop: "off" });
     // Bob never saved settings, so his reminder is only in his inbox.
     const [bobs] = await inbox("bob");
@@ -208,7 +208,7 @@ describe("feedback requests", () => {
     assert.equal(sent.email[0].to, "bob@example.com");
     assert.equal(sent.email[0].subject, "How was basketball at North Boulder Park?");
     assert.match(sent.email[0].text, /^Rate the other players by /);
-    assert.match(sent.email[0].text, new RegExp(`rate-players\\.html\\?id=${game}`));
+    assert.ok(sent.email[0].text.includes(`/login-and-registration/home.html?panel=rate&game=${game}`));
     assert.equal((await pass(channels)).feedback, 0);
   });
 
@@ -326,7 +326,7 @@ describe("delivery", () => {
     const toAlice = sent.desktop.find((m) => m.tokens.includes("laptop"));
     assert.deepEqual(toAlice.tokens, ["laptop", "old-phone"]);
     assert.equal(toAlice.title, "Basketball starts in about an hour");
-    assert.equal(toAlice.link, `https://pickup.example.com/game.html?id=${game}`);
+    assert.equal(toAlice.link, "https://pickup.example.com/login-and-registration/home.html?panel=notifications");
 
     const alice = (await db.doc(`notificationSettings/${uid.alice}`).get()).data();
     assert.deepEqual(alice.desktopTokens, ["laptop"]);

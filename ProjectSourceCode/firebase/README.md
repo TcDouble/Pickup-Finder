@@ -12,7 +12,7 @@ Pickup games live in the Firestore `events` collection, the feedback players lea
 | `matchmaking.js` | Suggest games whose players have a sportsmanship score close to yours ([below](#matchmaking)). |
 | `notifications.js` | Notification settings (email, text, desktop; match alerts, reminders, feedback requests) and the in-app inbox ([below](#notifications)). The notifier in [`../notifier/`](../notifier/) sends the messages. |
 | `firebase-messaging-sw.js` | Service worker that shows desktop notifications while the site is closed. |
-| `firestore.rules` | Security rules for `events`, `feedback`, `sportsmanship`, `notificationSettings`, and `notifications` (and a minimal rule for `users`). |
+| `firestore.rules` | Security rules for `users`, `events`, `feedback`, `sportsmanship`, `notificationSettings`, and `notifications`. |
 | `storage.rules` | Storage security rules: each user can upload only their own profile picture (`profilePictures/{uid}/avatar`). Tested in `../test/storage-rules.spec.js`. |
 | `firestore.indexes.json` | The composite indexes the searches need. |
 | `firebase.json`, `.firebaserc` | Firebase CLI settings for deploying and for the local emulators. |
@@ -359,7 +359,7 @@ await markNotificationRead(items[0].id);
 The rules let signed-in users read games, feedback, and totals, and enforce, on Firestore's side:
 
 - A new game is hosted by its creator, starts with only the host, starts in the future, and passes the same field checks as `events.js`.
-- An RSVP adds exactly the signed-in user, once, and never past `playerLimit`. Writes to one game are applied one at a time, so two people can't both take the last spot.
+- An RSVP adds exactly the signed-in user, once, and never past `playerLimit`. Writes to one game are applied one at a time, so two people can't both take the last spot. The rules refuse the one who loses, and `events.js` then runs the RSVP again, so they get `events/full` instead of `permission-denied`.
 - Cancelling an RSVP removes only yourself, and the host can't leave.
 - Only the host edits or cancels, can't change the sport, host, or players, and can't set the limit below the players already going.
 - Cancelled and started games can't be changed, and nobody can delete a game.
@@ -368,7 +368,7 @@ The rules let signed-in users read games, feedback, and totals, and enforce, on 
 - Only you can read or change your `notificationSettings`. They must pass the same checks as `notifications.js`: texts need a valid phone number, desktop needs a browser, and match alerts need real sports, a distance from 1 to 100 km, and a score from 0 to 100.
 - You can read only your own `notifications`, and the only change you can make is marking one read. Nobody can create or delete them from a browser.
 
-**Deploying rules replaces all the rules in the project.** That's why `firestore.rules` also has a basic `users` rule (you can write only your own profile; signed-in users can read profiles). The profile team should tighten it before we deploy. To deploy the rules and indexes, from this folder:
+**Deploying rules replaces all the rules in the project.** That's why `firestore.rules` also has the `users` rule (only you can write or delete your profile, with each field checked; signed-in users can read profiles). To deploy the rules and indexes, from this folder:
 
 ```sh
 npm install

@@ -120,6 +120,13 @@ export async function deleteAuthUser(uid) {
   await authAdmin("accounts:delete", { localId: uid });
 }
 
+/** Emails the Auth emulator would have sent to this address, e.g. [{ requestType: "PASSWORD_RESET", ... }]. */
+export async function sentEmails(email) {
+  const res = await fetch(`http://${AUTH_HOST}/emulator/v1/projects/${PROJECT_ID}/oobCodes`);
+  if (!res.ok) throw new Error(`Auth emulator oobCodes failed: ${res.status} ${await res.text()}`);
+  return ((await res.json()).oobCodes ?? []).filter((code) => code.email === email);
+}
+
 /** A fresh address for each test, so reruns never collide with old data. */
 export function uniqueEmail(label) {
   return `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;

@@ -1,9 +1,14 @@
-import { auth } from "../firebase/firebase-config.js";
+import { auth, db, storage } from "../firebase/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { hasProfile } from "./auth-helpers.js";
 import { watchEvents } from "../firebase/events.js";
-// import { MAPS_API_KEY } from "./maps-config.local.js";
+import { getPlayerStats } from "../firebase/sportsmanship.js";
+import { DEFAULT_PHOTO, SPORT_NAMES, friendlyError, hasProfile } from "./auth-helpers.js";
+import { photoError } from "./validateRegistration.js";
+import { MAX_BIO } from "./validateProfile.js";
+import { countGamesHosted, deleteAccount, getProfile, saveProfile, sendPasswordReset } from "./profile.js";
+import { setupEventFilters } from "./filters.js";
 
+const $ = (id) => document.getElementById(id);
 
 // You have to be logged in to use the app. The page stays hidden (see .auth-pending
 // in home.html) until we know who's here:
@@ -29,6 +34,7 @@ onAuthStateChanged(auth, async (user) => {
 
   // Show the app before waiting for Google Maps.
   document.documentElement.classList.remove("auth-pending");
+  openPanelFromLink();
 
   const status = document.querySelector(".game-count");
   const locationButton = document.getElementById("track-location");
@@ -50,20 +56,36 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-document.getElementById("logout-btn").addEventListener("click", async () => {
+$("logout-btn").addEventListener("click", async () => {
   await signOut(auth);
   window.location.replace("login.html");
 });
 
 // Sidebar buttons open their panel over the map; clicking the open one again closes it.
 // "+ Host a game" opens the create-game form, which ../create-game/create-game.js runs.
-// The other panels are wireframe placeholders.
+// Notifications, Recommended, and Rate players are run by the scripts in
+// ../notifications/, ../recommended/, and ../rate-players/.
+// My games and Profile are still wireframe placeholders.
 const navButtons = document.querySelectorAll(".sidebar [data-panel]");
 const panels = document.querySelectorAll(".panel");
 
 function showPanel(name) {
   panels.forEach((panel) => { panel.hidden = panel.id !== `panel-${name}`; });
   navButtons.forEach((btn) => btn.setAttribute("aria-pressed", String(btn.dataset.panel === name)));
+  if (name === "profile") loadProfile();
+}
+
+// Other scripts open a panel with showPanel() in ../assets/panel-helpers.js,
+// which sends this event. Its detail is { name, gameId }.
+document.addEventListener("pickup:show-panel", (event) => showPanel(event.detail?.name ?? null));
+
+// Links in notifications open a panel: home.html?panel=rate&game=<id>.
+function openPanelFromLink() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("panel")) return;
+  document.dispatchEvent(new CustomEvent("pickup:show-panel", {
+    detail: { name: params.get("panel"), gameId: params.get("game") },
+  }));
 }
 
 navButtons.forEach((btn) => {
@@ -76,12 +98,226 @@ document.querySelectorAll(".close-btn").forEach((btn) => {
   btn.addEventListener("click", () => showPanel(null));
 });
 
-// Activity chips toggle on and off (they don't filter anything yet).
-document.querySelectorAll(".filters .chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    chip.setAttribute("aria-pressed", String(chip.getAttribute("aria-pressed") !== "true"));
+// ---------------------------------------------------------------------------
+// Profile panel
+// ---------------------------------------------------------------------------
+
+const profileForm = $("profile-form");
+const deleteForm = $("delete-form");
+let profile = null;
+
+function showMessage(id, text, ok = false) {
+  $(id).textContent = text;
+  $(id).classList.toggle("ok", ok);
+}
+
+function showProfileView(which) {
+  $("profile-view").hidden = which !== "view";
+  profileForm.hidden = which !== "edit";
+  deleteForm.hidden = which !== "delete";
+}
+
+async function loadProfile() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  showProfileView("view");
+  showMessage("profile-message", "");
+  try {
+    // Stats are extras: if one fails, still show the profile.
+    const [loaded, stats, hosted] = await Promise.all([
+      getProfile({ db }, uid),
+      getPlayerStats(uid).catch((err) => console.error(err)),
+      countGamesHosted({ db }, uid).catch((err) => console.error(err)),
+    ]);
+    profile = loaded;
+    renderProfile(stats, hosted);
+  } catch (err) {
+    console.error(err);
+    showMessage("profile-message", "We couldn't load your profile. Please try again.");
+  }
+}
+
+function renderProfile(stats, hosted) {
+  $("profile-photo").src = profile?.photoURL || DEFAULT_PHOTO;
+  $("profile-name").textContent = profile?.displayName || "Your profile";
+  const since = profile?.createdAt
+    ? `Member since ${profile.createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" })}`
+    : "";
+  $("profile-meta").textContent = [profile?.city, since].filter(Boolean).join(" · ");
+
+  $("stat-played").textContent = stats?.gamesPlayed ?? "–";
+  $("stat-hosted").textContent = hosted ?? "–";
+  $("stat-score").textContent = stats?.score ?? "–";
+
+  const sports = profile?.sports ?? [];
+  const tags = sports.map((sport) => {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    const level = profile.sportLevels[sport];
+    const name = SPORT_NAMES[sport] ?? sport;
+    tag.textContent = level ? `${name} · ${level[0].toUpperCase()}${level.slice(1)}` : name;
+    return tag;
   });
+  if (tags.length === 0) {
+    const none = document.createElement("span");
+    none.className = "muted";
+    none.textContent = "No sports yet.";
+    tags.push(none);
+  }
+  $("profile-sports").replaceChildren(...tags);
+
+  $("profile-bio").textContent = profile?.bio || "No bio yet.";
+  $("profile-bio").classList.toggle("muted", !profile?.bio);
+}
+
+// --- Edit profile ---
+
+const photoInput = $("edit-photo");
+const photoPreview = $("edit-photo-preview");
+const photoRemove = $("edit-photo-remove");
+const sportBoxes = profileForm.querySelectorAll('input[name="sports"]');
+const levelFor = (sport) => profileForm.querySelector(`select[name="level-${sport}"]`);
+let newPhoto = null;
+let removePhoto = false;
+let previewURL = null;
+
+function showEditPhoto() {
+  if (previewURL) URL.revokeObjectURL(previewURL);
+  previewURL = newPhoto ? URL.createObjectURL(newPhoto) : null;
+  photoPreview.src = previewURL ?? (removePhoto ? null : profile?.photoURL) ?? DEFAULT_PHOTO;
+  photoRemove.hidden = !newPhoto && (removePhoto || !profile?.photoURL);
+}
+
+function updateBioCount() {
+  $("edit-bio-count").textContent = `${$("edit-bio").value.length} / ${MAX_BIO}`;
+}
+
+$("edit-profile-btn").addEventListener("click", () => {
+  newPhoto = null;
+  removePhoto = false;
+  photoInput.value = "";
+  showEditPhoto();
+  $("edit-name").value = profile?.displayName ?? "";
+  $("edit-city").value = profile?.city ?? "";
+  $("edit-bio").value = profile?.bio ?? "";
+  updateBioCount();
+  sportBoxes.forEach((box) => {
+    box.checked = profile?.sports.includes(box.value) ?? false;
+    levelFor(box.value).value = profile?.sportLevels[box.value] ?? "casual";
+    levelFor(box.value).disabled = !box.checked;
+  });
+  showMessage("edit-message", "");
+  showProfileView("edit");
 });
+
+$("cancel-edit-btn").addEventListener("click", () => showProfileView("view"));
+
+sportBoxes.forEach((box) => {
+  box.addEventListener("change", () => { levelFor(box.value).disabled = !box.checked; });
+});
+
+$("edit-bio").addEventListener("input", updateBioCount);
+
+photoInput.addEventListener("change", () => {
+  const file = photoInput.files[0] ?? null;
+  const problem = photoError(file);
+  showMessage("edit-message", problem ?? "");
+  if (problem) photoInput.value = "";
+  newPhoto = problem ? null : file;
+  if (newPhoto) removePhoto = false;
+  showEditPhoto();
+});
+
+photoRemove.addEventListener("click", () => {
+  photoInput.value = "";
+  newPhoto = null;
+  removePhoto = Boolean(profile?.photoURL);
+  showEditPhoto();
+});
+
+profileForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const sports = [...sportBoxes].filter((box) => box.checked).map((box) => box.value);
+  const input = {
+    photo: newPhoto,
+    removePhoto,
+    displayName: $("edit-name").value,
+    city: $("edit-city").value,
+    sports,
+    sportLevels: Object.fromEntries(sports.map((sport) => [sport, levelFor(sport).value])),
+    bio: $("edit-bio").value,
+  };
+
+  const saveBtn = $("save-profile-btn");
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving…";
+  try {
+    await saveProfile({ auth, db, storage }, input);
+    await loadProfile();
+    showMessage("profile-message", "Profile saved.", true);
+  } catch (err) {
+    console.error(err);
+    const text =
+      err.code === "profile/invalid" ? err.message
+      : err.code === "permission-denied" ? "We couldn't save your profile. Please try again."
+      : friendlyError(err.code);
+    showMessage("edit-message", text);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save";
+  }
+});
+
+// --- Reset password ---
+
+$("reset-password-btn").addEventListener("click", async () => {
+  const btn = $("reset-password-btn");
+  btn.disabled = true;
+  try {
+    const email = await sendPasswordReset({ auth });
+    showMessage("profile-message", `We sent a reset link to ${email}.`, true);
+  } catch (err) {
+    console.error(err);
+    showMessage("profile-message", friendlyError(err.code));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// --- Delete account ---
+
+$("delete-account-btn").addEventListener("click", () => {
+  $("delete-password").value = "";
+  showMessage("delete-message", "");
+  showProfileView("delete");
+});
+
+$("cancel-delete-btn").addEventListener("click", () => showProfileView("view"));
+
+deleteForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("confirm-delete-btn");
+  btn.disabled = true;
+  btn.textContent = "Deleting…";
+  try {
+    await deleteAccount({ auth, db, storage }, $("delete-password").value);
+    window.location.href = "login.html";
+  } catch (err) {
+    console.error(err);
+    const text =
+      err.code === "profile/invalid" ? err.message
+      : err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" ? "Incorrect password."
+      : friendlyError(err.code);
+    showMessage("delete-message", text);
+    btn.disabled = false;
+    btn.textContent = "Delete account";
+  }
+});
+
+// --- Wireframe behavior only: these change what's shown, nothing else. ---
+
+// Initialize the filter controls.
+const filters = setupEventFilters();
 const BOULDER = { lat: 40.0076, lng: -105.2659 };
 
 let map;
@@ -323,7 +559,7 @@ trackButton.addEventListener("click", () => {
   );
 });
 // My games tabs: only one is selected at a time.
-const tabs = document.querySelectorAll(".tabs button");
+const tabs = document.querySelectorAll("#panel-games .tabs button");
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     tabs.forEach((t) => t.setAttribute("aria-pressed", String(t === tab)));

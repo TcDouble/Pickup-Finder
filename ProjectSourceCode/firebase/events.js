@@ -127,7 +127,7 @@ export async function updateEvent(eventId, changes) {
     }
   }
   const ref = doc(eventsCol, eventId);
-  await runTransaction(db, async (tx) => {
+  await runGameTransaction(async (tx) => {
     const current = await readOpenEvent(tx, ref);
     if (current.hostId !== user.uid) throw notHost();
 
@@ -153,7 +153,7 @@ export async function updateEvent(eventId, changes) {
 export async function cancelEvent(eventId) {
   const user = requireUser();
   const ref = doc(eventsCol, eventId);
-  await runTransaction(db, async (tx) => {
+  await runGameTransaction(async (tx) => {
     const current = await readOpenEvent(tx, ref);
     if (current.hostId !== user.uid) throw notHost();
     tx.update(ref, { status: "cancelled" });
@@ -172,7 +172,7 @@ export async function cancelEvent(eventId) {
 export async function rsvpToEvent(eventId) {
   const user = requireUser();
   const ref = doc(eventsCol, eventId);
-  return runTransaction(db, async (tx) => {
+  return runGameTransaction(async (tx) => {
     const current = await readOpenEvent(tx, ref);
     if (current.participantIds.includes(user.uid)) return toEvent(eventId, current);
     if (current.participantIds.length >= current.playerLimit) {
@@ -191,7 +191,7 @@ export async function rsvpToEvent(eventId) {
 export async function cancelRsvp(eventId) {
   const user = requireUser();
   const ref = doc(eventsCol, eventId);
-  return runTransaction(db, async (tx) => {
+  return runGameTransaction(async (tx) => {
     const current = await readOpenEvent(tx, ref);
     if (!current.participantIds.includes(user.uid)) return toEvent(eventId, current);
     if (current.hostId === user.uid) {
@@ -333,6 +333,31 @@ function requireUser() {
 
 function notHost() {
   return new EventError("events/not-host", "Only the host can change this game.");
+}
+
+// Run a transaction on one game, for every change to a game. A transaction
+// reads the game, and its write only goes through if the game hasn't changed
+// since. But the security rules check the write against the game as it is
+// when the write arrives, and they get the first say. When several players
+// try for the last spot at once, they all read a game with one spot left, the
+// first one gets it, and the rules refuse the others ("permission-denied")
+// because their RSVPs would now go over the limit. Firestore only retries a
+// transaction when the game changed, not when the rules say no, so those
+// players would see "You don't have permission to do that". Running the
+// transaction again reads the game as it is now, so they get the right error
+// ("events/full", "events/cancelled", ...) or, if a spot opened up, get in.
+// If the rules still say no after 3 tries, it wasn't a race, and that error
+// goes to the caller.
+const GAME_TRANSACTION_TRIES = 3;
+
+async function runGameTransaction(updateFunction) {
+  for (let tries = 1; ; tries++) {
+    try {
+      return await runTransaction(db, updateFunction);
+    } catch (err) {
+      if (err?.code !== "permission-denied" || tries >= GAME_TRANSACTION_TRIES) throw err;
+    }
+  }
 }
 
 // Read an event inside a transaction and make sure it can still be changed.
