@@ -1,6 +1,6 @@
 import { auth, db, storage } from "../firebase/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { watchEvents } from "../firebase/events.js";
+import { watchEvents, listMyEvents } from "../firebase/events.js";
 import { getPlayerStats } from "../firebase/sportsmanship.js";
 import { DEFAULT_PHOTO, SPORT_NAMES, friendlyError, hasProfile } from "./auth-helpers.js";
 import { photoError } from "./validateRegistration.js";
@@ -75,6 +75,7 @@ function showPanel(name) {
   panels.forEach((panel) => { panel.hidden = panel.id !== `panel-${name}`; });
   navButtons.forEach((btn) => btn.setAttribute("aria-pressed", String(btn.dataset.panel === name)));
   if (name === "profile") loadProfile();
+  if (name === "games") loadMyGames("joined");
 }
 
 // Other scripts open a panel with showPanel() in ../assets/panel-helpers.js,
@@ -651,10 +652,109 @@ trackButton.addEventListener("click", () => {
     }
   );
 });
-// My games tabs: only one is selected at a time.
+// --- My games: load and display the user's games ---
+
 const tabs = document.querySelectorAll("#panel-games .tabs button");
+const myGamesList = $("my-games-list");
+const myGamesMessage = $("my-games-message");
+
+async function loadMyGames(view = "joined") {
+  myGamesList.replaceChildren();
+  myGamesMessage.textContent = "Loading games...";
+
+  const role = view === "hosting" ? "hosting" : "joined";
+  const when = view === "past" ? "past" : "upcoming";
+
+  try {
+    const events = await listMyEvents({ role, when });
+
+    myGamesMessage.textContent = "";
+
+    if (events.length === 0) {
+      myGamesList.textContent =
+        view === "hosting"
+          ? "You aren't hosting any upcoming games."
+          : view === "past"
+            ? "You don't have any past games."
+            : "You haven't joined any upcoming games yet.";
+      return;
+    }
+
+    events.forEach((event) => {
+      const card = document.createElement("div");
+      card.className = "game-card";
+
+      const date = event.startTime instanceof Date
+        ? event.startTime
+        : new Date(event.startTime);
+
+      const dateBox = document.createElement("div");
+      dateBox.className = "date-box";
+
+      const month = document.createElement("span");
+      month.textContent = date.toLocaleDateString(undefined, {
+        month: "short",
+      });
+
+      const day = document.createElement("span");
+      day.textContent = date.getDate();
+
+      dateBox.append(month, day);
+
+      const details = document.createElement("div");
+      details.className = "list-text";
+
+      const sport = SPORT_NAMES[event.sportId] || "Pickup game";
+      const heading = document.createElement("strong");
+      heading.textContent = event.title
+        ? `${sport} · ${event.title}`
+        : `Pickup ${sport}`;
+
+      const location = document.createElement("span");
+      location.textContent = event.location?.name || "Location not listed";
+
+      const time = document.createElement("span");
+      time.textContent = date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+
+      const players = document.createElement("span");
+      players.textContent =
+        `${event.playerCount ?? 0} / ${event.playerLimit} players`;
+
+      details.append(heading, location, time, players);
+      card.append(dateBox, details);
+
+      if (view === "hosting" && event.isHost) {
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "btn";
+        editButton.textContent = "Edit";
+
+        editButton.addEventListener("click", () => {
+          window.location.href =
+            `../edit-game/edit-game.html?game=${encodeURIComponent(event.id)}`;
+        });
+
+        card.append(editButton);
+      }
+
+      myGamesList.append(card);
+    });
+  } catch (error) {
+    console.error("Unable to load games:", error);
+    myGamesMessage.textContent = friendlyError(error.code);
+  }
+}
+
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
-    tabs.forEach((t) => t.setAttribute("aria-pressed", String(t === tab)));
+    tabs.forEach((t) =>
+      t.setAttribute("aria-pressed", String(t === tab))
+    );
+
+    const view = tab.textContent.trim().toLowerCase();
+    loadMyGames(view);
   });
 });
