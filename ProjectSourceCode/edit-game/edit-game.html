@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit a pickup game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body class="centered">
+  <main class="card wide">
+    <header class="card-header">
+      <h1>Edit your game</h1>
+      <p>Update your pickup game details so players know what's changed.</p>
+    </header>
+
+    <form id="game-form" class="card-body" novalidate>
+      <!-- Sport (event title: "Pickup Basketball") -->
+      <fieldset>
+        <legend>Sport</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="sport" value="basketball" checked /> Basketball</label>
+          <label class="chip"><input type="radio" name="sport" value="soccer" /> Soccer</label>
+          <label class="chip"><input type="radio" name="sport" value="volleyball" /> Volleyball</label>
+          <label class="chip"><input type="radio" name="sport" value="tennis" /> Tennis</label>
+          <label class="chip"><input type="radio" name="sport" value="pickleball" /> Pickleball</label>
+          <label class="chip"><input type="radio" name="sport" value="football" /> Football</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="title">Game name <span class="hint">(optional)</span></label>
+        <input id="title" type="text" maxlength="60" placeholder="e.g. 5v5 full court" />
+      </div>
+
+      <!-- Where -->
+      <div class="field">
+        <label for="placeName">Where</label>
+        <input id="placeName" type="text" maxlength="100" placeholder="Park / court name" required />
+      </div>
+
+      <div class="field">
+        <label for="address">Address <span class="hint">(optional, helps us find it)</span></label>
+        <input id="address" type="text" maxlength="200" autocomplete="street-address" placeholder="e.g. 1600 Pleasant St, Boulder, CO" />
+        <div class="locate">
+          <button type="button" class="btn small" id="find-place">Find this place</button>
+          <button type="button" class="btn small" id="use-location">Use my location</button>
+          <span id="coords" class="coords" aria-live="polite">Not placed on the map yet.</span>
+        </div>
+      </div>
+
+      <!-- When -->
+      <div class="grid-3">
+        <div class="field">
+          <label for="date">Date</label>
+          <input id="date" type="date" required />
+        </div>
+        <div class="field">
+          <label for="startTime">Starts</label>
+          <input id="startTime" type="time" required />
+        </div>
+        <div class="field">
+          <label for="endTime">Ends</label>
+          <input id="endTime" type="time" required />
+        </div>
+      </div>
+
+      <!-- Players -->
+      <div class="field">
+        <label for="playerLimit">Total players</label>
+        <input id="playerLimit" type="number" min="2" max="50" value="10" required />
+        <span class="hint">Including you. 2 to 50.</span>
+      </div>
+
+      <!-- Level -->
+      <fieldset>
+        <legend>Level</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="level" value="casual" checked /> Casual</label>
+          <label class="chip"><input type="radio" name="level" value="competitive" /> Competitive</label>
+        </div>
+      </fieldset>
+
+      <!-- Description -->
+      <div class="field">
+        <label for="description">Description <span class="hint">(optional)</span></label>
+        <textarea id="description" maxlength="500" placeholder="e.g. Bring a light and dark shirt."></textarea>
+      </div>
+
+      <p id="message" class="message" role="alert" aria-live="polite"></p>
+      <button type="submit" id="submit-btn" class="btn primary big">Save changes</button>
+      <button type="button" id="cancel-btn" class="btn big">Cancel Game</button>
+    </form>
+  </main>
+
+</body>
+</html>
