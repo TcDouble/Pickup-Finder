@@ -2,7 +2,8 @@ import { auth } from "../firebase/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { hasProfile } from "./auth-helpers.js";
 import { watchEvents } from "../firebase/events.js";
-import { MAPS_API_KEY } from "./maps-config.local.js";
+// import { MAPS_API_KEY } from "./maps-config.local.js";
+
 
 // You have to be logged in to use the app. The page stays hidden (see .auth-pending
 // in home.html) until we know who's here:
@@ -22,14 +23,30 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
   } catch (err) {
-    // Couldn't check the profile (e.g. offline). They are logged in, so let them in.
-    console.error(err);
+    // Preserve the existing behavior if the profile check fails.
+    console.error("Cannot check profile:", err);
   }
+
+  // Show the app before waiting for Google Maps.
   document.documentElement.classList.remove("auth-pending");
+
+  const status = document.querySelector(".game-count");
+  const locationButton = document.getElementById("track-location");
+
+  status.textContent = "Loading map...";
+  locationButton.disabled = true;
+
   try {
     await initializePickupMap();
   } catch (err) {
     console.error("Cannot initialize map:", err);
+
+    status.textContent =
+      err instanceof Error
+        ? err.message
+        : "Map is unavailable. Please refresh to retry.";
+
+    locationButton.disabled = true;
   }
 });
 
@@ -78,27 +95,67 @@ let unsubscribeEvents;
 const trackButton = document.getElementById("track-location");
 
 // Load Google Maps.
-function loadGoogleMaps() {
+async function loadGoogleMaps() {
   if (window.google?.maps?.importLibrary) {
-    return Promise.resolve();
+    return;
   }
 
-  return new Promise((resolve, reject) => {
-    window.pickupMapsLoaded = () => {
-      delete window.pickupMapsLoaded;
-      resolve();
-    };
+  // Load the local configuration only when the map needs it.
+  let config;
 
+  try {
+    config = await import("./maps-config.local.js");
+  } catch {
+    throw new Error("Map configuration is unavailable.");
+  }
+
+  const key = config.MAPS_API_KEY;
+
+  if (
+    typeof key !== "string" ||
+    !key.trim() ||
+    key.trim() === "YOUR_GOOGLE_MAPS_API_KEY"
+  ) {
+    throw new Error("Map API key has not been configured.");
+  }
+
+  await new Promise((resolve, reject) => {
     const script = document.createElement("script");
+    let finished = false;
+
+    const timer = setTimeout(() => {
+      finish(new Error("Map loading timed out. Please refresh to retry."));
+    }, 15000);
+
+    function finish(error) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+
+      // Safely ignore a callback arriving after a timeout.
+      window.pickupMapsLoaded = () => {};
+
+      if (error) {
+        script.remove();
+        reject(error);
+      } else {
+        resolve();
+      }
+    }
+
+    window.pickupMapsLoaded = () => finish();
+
     script.src =
       "https://maps.googleapis.com/maps/api/js" +
-      `?key=${encodeURIComponent(MAPS_API_KEY)}` +
+      `?key=${encodeURIComponent(key.trim())}` +
       "&loading=async&callback=pickupMapsLoaded";
+
     script.async = true;
+
     script.onerror = () => {
-      delete window.pickupMapsLoaded;
-      reject(new Error("Google Maps failed to load."));
+      finish(new Error("Map could not load. Check your connection."));
     };
+
     document.head.appendChild(script);
   });
 }
@@ -125,7 +182,7 @@ async function setupPickupMap() {
   });
 
   infoWindow = new InfoWindow();
-
+  document.querySelector(".game-count").textContent = "Loading games...";
   unsubscribeEvents = watchEvents({}, displayEvents, (error) => {
     console.error("Cannot load events:", error);
     document.querySelector(".game-count").textContent =
