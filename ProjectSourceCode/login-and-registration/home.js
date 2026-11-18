@@ -7,6 +7,7 @@ import { DEFAULT_PHOTO, SPORT_NAMES, friendlyError, hasProfile } from "./auth-he
 import { photoError } from "./validateRegistration.js";
 import { MAX_BIO } from "./validateProfile.js";
 import { countGamesHosted, deleteAccount, getProfile, saveProfile, sendPasswordReset } from "./profile.js";
+import { setupEventFilters } from "./filters.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -300,12 +301,8 @@ deleteForm.addEventListener("submit", async (e) => {
 
 // --- Wireframe behavior only: these change what's shown, nothing else. ---
 
-// Activity chips toggle on and off (they don't filter anything yet).
-document.querySelectorAll(".filters .chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    chip.setAttribute("aria-pressed", String(chip.getAttribute("aria-pressed") !== "true"));
-  });
-});
+// Initialize the filter controls.
+const filters = setupEventFilters();
 const BOULDER = { lat: 40.0076, lng: -105.2659 };
 
 let map;
