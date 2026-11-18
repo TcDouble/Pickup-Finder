@@ -29,7 +29,7 @@ Not deployed yet. The link will be added here once the app is deployed.
 ## Features
 
 - **User Registration and Login:** Secure user authentication using Firebase Authentication. The home page requires login: a signed-out user is sent to the login page, and a user with no profile is sent to registration.
-- **User Profiles:** Store user information and preferences using Cloud Firestore, with optional profile picture uploads using Firebase Storage.
+- **User Profiles:** Store user information and preferences using Cloud Firestore, with optional profile picture uploads using Firebase Storage. The Profile panel on the home page shows your games played, games hosted, and sportsmanship score, and lets you edit your picture, name, city, sports and skill levels, and bio, get a password reset email, or delete your account.
 - **Google Maps Integration:** An interactive map on the home page shows upcoming games as pins, loaded live from Firestore. Clicking a pin shows the sport, place, time, and player count. "Start location tracking" shows your position on the map without saving it anywhere.
 - **Create Games:** Allow authenticated users to create sports events with information such as location, date, time, sport, skill level, and player limit, from the "+ Host a game" panel on the home page.
 - **Recommended Games and Matchmaking:** The Recommended panel ranks open games by how close their players' sportsmanship scores are to yours, with a Join button on each game.
@@ -40,12 +40,11 @@ Not deployed yet. The link will be added here once the app is deployed.
 
 ### In Progress
 
-- Sidebar filters: `filters.js` (sport chips, time, skill level, and location search) is written, but the home page doesn't load it yet, so the filters don't change which games show.
-- Profile panel: the functions to save profile edits, count hosted games, send a password reset email, and delete an account are written and tested, but the panel still shows placeholder content.
+- Sidebar filters: the home page loads `filters.js` (sport chips, time, skill level, and location search), and the controls respond, but the map doesn't use them to hide games yet.
 - My games panel (Joined, Hosting, and Past), and joining a game from its map pin.
 - Event editing.
-- Deploying the Firestore security rules and indexes to the live Firebase project. The Rate players, Notifications, and Recommended panels need them.
-- Deploying the application online.
+- Deploying the Firestore security rules, indexes, and Storage rules to the live Firebase project with `npm run deploy:rules` from `ProjectSourceCode/`. The Rate players, Notifications, and Recommended panels need them.
+- Deploying the application on Render (Lab 12). The web server, `ProjectSourceCode/index.js`, is ready to run there.
 
 ## Technologies Used
 
@@ -55,7 +54,7 @@ Not deployed yet. The link will be added here once the app is deployed.
 - Firebase Storage
 - Firebase Cloud Messaging (desktop notifications)
 - Google Maps JavaScript API
-- Node.js, for the notifier server and the tests
+- Node.js and Express, for the web server (`index.js`), the notifier server, and the tests
 - Nodemailer (email) and Twilio (text messages) in the notifier
 - Docker and Docker Compose
 - Mocha and Chai for automated testing
@@ -107,7 +106,7 @@ The notifier is optional for running the app. To set it up, see `ProjectSourceCo
 
 The project uses automated tests to verify registration functionality, Firebase security rules, profile picture handling, profile functions, the home page panels, and game creation.
 
-Tests run against Firebase Emulators to prevent modifications to production data. The suite has 90 tests as of November 17, 2026.
+Tests run against Firebase Emulators to prevent modifications to production data. The suite has 90 tests as of November 18, 2026.
 
 ### Running Tests Locally
 
