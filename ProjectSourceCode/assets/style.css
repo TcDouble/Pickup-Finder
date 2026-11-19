@@ -408,7 +408,17 @@ body.centered {
 @media (max-width: 640px) {
   .sidebar { max-width: none; border-right: none; border-bottom: 2px solid var(--black); }
   .map { min-height: 70vh; }
-  .panel { right: 8px; left: 8px; width: auto; max-width: none; }
+  /* The map sits below the sidebar on phones, so a panel opened inside it would
+     appear off-screen. Open panels over the whole screen instead. */
+  .panel {
+    position: fixed;
+    inset: 12px;
+    z-index: 10;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+  }
 }
 
 #google-map {
