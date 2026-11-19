@@ -369,24 +369,10 @@
           <button type="button" aria-pressed="false">Hosting</button>
           <button type="button" aria-pressed="false">Past</button>
         </div>
-
-        <div class="list-text gap-10">
-          <div class="game-card">
-            <div class="date-box"><span>[OCT]</span><span>[22]</span></div>
-            <div class="list-text"><strong>Pickup Basketball · 5v5</strong><span class="muted">[6:00 PM · Park / court name]</span></div>
-            <button type="button" class="btn">View</button>
-          </div>
-          <div class="game-card">
-            <div class="date-box"><span>[OCT]</span><span>[25]</span></div>
-            <div class="list-text"><strong>Soccer · 7v7</strong><span class="muted">[10:00 AM · Field name]</span></div>
-            <button type="button" class="btn">View</button>
-          </div>
-          <div class="game-card dashed">
-            <div class="date-box"><span>[OCT]</span><span>[27]</span></div>
-            <div class="list-text"><strong>Pickleball · Doubles</strong><span class="muted">[Waitlisted · #2 in line]</span></div>
-            <button type="button" class="btn">View</button>
-          </div>
-        </div>
+	<div class="list-text gap-10" id="my-games-list">
+	  <p class="muted">Select a tab to view your games.</p>
+	</div>
+	<p id="my-games-message" class="message" role="status" aria-live="polite"></p>
       </section>
 
       <section class="panel" id="panel-profile" aria-label="Profile" hidden>

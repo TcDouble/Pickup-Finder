@@ -42,5 +42,21 @@ The current query uses the module's default upcoming-game filters and limit,
 not the sidebar filters or the user's distance. An event-listener failure shows
 "Unable to load games"; inspect the browser console for its cause.
 
+`map-pins.js` decides what the pins show, and `home.js` draws them:
+
+- Each game with a valid saved location (`location.lat` and `location.lng` are
+  numbers on the globe) gets a pin at that spot, showing its sport's icon.
+- Games at the same spot (within about a meter, like two games on one court)
+  share a pin with a count badge, so none hides under another.
+- Clicking a pin opens a popup with each game's name, place, address, date,
+  time, players, and skill level.
+- Pins update live. An open popup stays open and shows the new numbers, and it
+  closes if its games are gone.
+- Games without a valid location are left off the map, listed in a console
+  warning, and never stop the other pins from showing.
+
+`npm run test:unit` covers `map-pins.js` (`../test/map-pins.spec.js`).
+
 To check manually: load the map after signing in, use both zoom buttons, start
-and stop location tracking, and click a game pin to inspect its details.
+and stop location tracking, and click a game pin to inspect its details. Host
+two games at the same place to see a shared pin.

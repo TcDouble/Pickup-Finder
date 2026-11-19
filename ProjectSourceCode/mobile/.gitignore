@@ -1,0 +1,5 @@
+node_modules/
+# Built by `npm run build:web` from the website's pages; never edit or commit it.
+www/
+.DS_Store
+# ios/.gitignore (from Capacitor) covers the Xcode build output and copied web files.

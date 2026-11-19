@@ -25,6 +25,7 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIRS = [
   "assets",
   "create-game",
+  "edit-game",
   "firebase",
   "login-and-registration",
   "notifications",

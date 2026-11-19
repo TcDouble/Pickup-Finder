@@ -16,6 +16,7 @@ requirement maps onto our app.
 | Positive `POST /register` test | `registerUser()`, the function the sign-up page calls, on the emulators | `registration.spec.js` |
 | Negative `POST /register` test (no password) | `registerUser()` with an empty password | `registration.spec.js` |
 | Test database whose name ends in `_test` | Emulators under the `demo-pickup-finder` project, which can't reach live Firebase | `emulator.js` |
+| Map pins (not in the lab) | `map-pins.js` on its own: which games get pins, where, shared spots, and what the popup says | `map-pins.spec.js` |
 | Profile panel (not in the lab) | `validateProfile()` on its own; `saveProfile()`, `countGamesHosted()`, `sendPasswordReset()` and `deleteAccount()` on the emulators | `profile-validation.spec.js`, `profile.spec.js` |
 | Security rules for profiles | Every check in the `users` rule: owner-only writes and deletes, field types and lengths, unknown fields | `profile-rules.spec.js` |
 | Security rules for profile pictures | Every rule in `firebase/storage.rules`, tried as the owner, another user, and a signed-out visitor | `storage-rules.spec.js` |

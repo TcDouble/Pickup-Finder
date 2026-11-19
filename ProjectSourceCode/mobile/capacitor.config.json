@@ -1,0 +1,10 @@
+{
+  "appId": "io.github.tcdouble.pickupfinder",
+  "appName": "PickupFinder",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "automatic",
+    "scheme": "PickupFinder"
+  },
+  "backgroundColor": "#F2F2F2"
+}
