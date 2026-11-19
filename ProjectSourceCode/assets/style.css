@@ -423,6 +423,68 @@ body.centered {
   z-index: 1;
 }
 
+/* Game pins on the map (home.js draws them). The tip of .map-pin-point is the
+   bottom of the pin, which is where Google Maps puts the game's spot. */
+.map-pin {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+.map-pin-head {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  background: var(--black);
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.map-pin-point {
+  width: 0;
+  height: 0;
+  margin-top: -1px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 9px solid var(--gold);
+}
+.map-pin:hover .map-pin-head { background: var(--dark-gray); }
+/* How many games share the spot */
+.map-pin-count {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 2px solid var(--black);
+  border-radius: 10px;
+  background: var(--gold);
+  color: var(--black);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* The popup when a pin is clicked */
+.pin-popup {
+  min-width: 200px;
+  max-width: 260px;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.pin-popup h3 { font-size: 15px; margin-bottom: 4px; }
+.pin-popup p { margin: 0; }
+.pin-popup ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.pin-popup li + li { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--divider); }
+
 /* ---------- Home: Notifications, Recommended, and Rate players panels ---------- */
 /* Text only screen readers hear, such as "Unread:" before an inbox item. */
 .sr-only {

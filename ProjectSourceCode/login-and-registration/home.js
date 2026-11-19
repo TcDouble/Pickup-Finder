@@ -7,6 +7,8 @@ import { photoError } from "./validateRegistration.js";
 import { MAX_BIO } from "./validateProfile.js";
 import { countGamesHosted, deleteAccount, getProfile, saveProfile, sendPasswordReset } from "./profile.js";
 import { setupEventFilters } from "./filters.js";
+import { gameCountText, gameDetails, groupIntoPins, pinLook, pinTitle } from "./map-pins.js";
+import { el } from "../assets/panel-helpers.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -322,7 +324,10 @@ const BOULDER = { lat: 40.0076, lng: -105.2659 };
 
 let map;
 let infoWindow;
-let gameMarkers = [];
+// Game pins by pin.key from map-pins.js: { marker, pin, look }. Live updates
+// change these in place, so an open popup stays open with the new numbers.
+const pinMarkers = new Map();
+let openPinKey = null;
 let userMarker = null;
 let trackingId = null;
 let mapInitPromise;
@@ -418,12 +423,26 @@ async function setupPickupMap() {
   });
 
   infoWindow = new InfoWindow();
-  document.querySelector(".game-count").textContent = "Loading games...";
-  unsubscribeEvents = watchEvents({}, displayEvents, (error) => {
-    console.error("Cannot load events:", error);
-    document.querySelector(".game-count").textContent =
-      "Unable to load games";
+  infoWindow.addListener("closeclick", () => {
+    openPinKey = null;
   });
+  document.querySelector(".game-count").textContent = "Loading games...";
+  unsubscribeEvents = watchEvents(
+    {},
+    (events) => {
+      try {
+        displayEvents(events);
+      } catch (err) {
+        console.error("Cannot show games on the map:", err);
+        document.querySelector(".game-count").textContent = "Unable to show games";
+      }
+    },
+    (error) => {
+      console.error("Cannot load events:", error);
+      document.querySelector(".game-count").textContent =
+        "Unable to load games";
+    },
+  );
 
   const zoomButtons = document.querySelectorAll(".zoom button");
   zoomButtons[0].addEventListener("click", () => {
@@ -436,59 +455,133 @@ async function setupPickupMap() {
   trackButton.disabled = false;
 }
 
-// Convert Firestore events into map pins.
+// Show the games from Firestore as pins: one pin per spot (see map-pins.js),
+// updated in place on every live change. Games without a valid saved
+// location are left off the map, and one pin failing doesn't stop the rest.
 function displayEvents(events) {
-  infoWindow.close();
-  gameMarkers.forEach((marker) => {
-    marker.map = null;
-  });
-  gameMarkers = [];
-
-  for (const event of events) {
-    const location = event.location;
-    if (
-      !location ||
-      !Number.isFinite(location.lat) ||
-      !Number.isFinite(location.lng)
-    ) {
-      continue;
-    }
-
-    const marker = new google.maps.marker.AdvancedMarkerElement({
-      map,
-      position: { lat: location.lat, lng: location.lng },
-      title: event.title || event.sportId || "Game",
-    });
-
-    marker.addListener("click", () => {
-      const content = document.createElement("div");
-      const title = document.createElement("strong");
-      title.textContent = event.title || event.sportId || "Game";
-      content.append(title);
-
-      const details = [
-        `${event.sportId} | ${location.name}`,
-        event.startTime
-          ? event.startTime.toLocaleString()
-          : "Time unavailable",
-        `${event.playerCount}/${event.playerLimit} players`,
-      ];
-
-      for (const text of details) {
-        const paragraph = document.createElement("p");
-        paragraph.textContent = text;
-        content.append(paragraph);
-      }
-
-      infoWindow.setContent(content);
-      infoWindow.open({ map, anchor: marker });
-    });
-
-    gameMarkers.push(marker);
+  const { pins, skipped } = groupIntoPins(events);
+  if (skipped.length > 0) {
+    console.warn(
+      "Games left off the map (no valid saved location):",
+      skipped.map((event) => event?.id),
+    );
   }
 
-  document.querySelector(".game-count").textContent =
-    `${gameMarkers.length} games available`;
+  const shown = new Set();
+  for (const pin of pins) {
+    try {
+      showPin(pin);
+      shown.add(pin.key);
+    } catch (err) {
+      console.error(`Cannot show the pin at ${pin.key}:`, err);
+    }
+  }
+
+  // Remove the pins for games that are gone (started, cancelled, moved).
+  for (const [key, entry] of pinMarkers) {
+    if (shown.has(key)) continue;
+    entry.marker.map = null;
+    pinMarkers.delete(key);
+  }
+
+  // Keep an open popup current, or close it if its pin is gone.
+  if (openPinKey !== null) {
+    const open = pinMarkers.get(openPinKey);
+    if (open) {
+      infoWindow.setContent(pinPopup(open.pin));
+    } else {
+      infoWindow.close();
+      openPinKey = null;
+    }
+  }
+
+  let gameCount = 0;
+  for (const entry of pinMarkers.values()) gameCount += entry.pin.events.length;
+  document.querySelector(".game-count").textContent = gameCountText(gameCount);
+}
+
+// Add a pin, or update the one already at that spot.
+function showPin(pin) {
+  const { icon, count } = pinLook(pin);
+  const look = `${icon} ${count}`;
+  const existing = pinMarkers.get(pin.key);
+  if (existing) {
+    existing.pin = pin;
+    existing.marker.title = pinTitle(pin);
+    if (existing.look !== look) {
+      existing.marker.content = pinElement(icon, count);
+      existing.look = look;
+    }
+    return;
+  }
+
+  const marker = new google.maps.marker.AdvancedMarkerElement({
+    map,
+    position: pin.position,
+    title: pinTitle(pin),
+    content: pinElement(icon, count),
+  });
+  // The listener reads the entry when clicked, so it always shows the latest games.
+  marker.addListener("click", () => openPin(pin.key));
+  pinMarkers.set(pin.key, { marker, pin, look });
+}
+
+function openPin(key) {
+  const entry = pinMarkers.get(key);
+  if (!entry) return;
+  openPinKey = key;
+  infoWindow.setContent(pinPopup(entry.pin));
+  infoWindow.open({ map, anchor: entry.marker });
+}
+
+// The pin: the sport's icon, plus a count when several games share the spot.
+function pinElement(icon, count) {
+  return el(
+    "div",
+    { class: "map-pin" },
+    el("span", { class: "map-pin-head", "aria-hidden": "true" }, icon),
+    count > 1 && el("span", { class: "map-pin-count", "aria-hidden": "true" }, String(count)),
+    el("span", { class: "map-pin-point", "aria-hidden": "true" }),
+  );
+}
+
+// The popup for a pin. One game: its name, then where and when. Several
+// games at one spot: the place, then each game soonest first.
+function pinPopup(pin) {
+  const games = pin.events.map((event) => gameDetails(event));
+  const [first] = games;
+  const where = [
+    el("p", {}, first.place),
+    first.address && el("p", { class: "muted" }, first.address),
+  ];
+  const whenAndWho = (game) => [
+    el("p", {}, `${game.date} · ${game.time}`),
+    el("p", { class: "muted" }, [game.players, game.skill].filter(Boolean).join(" · ")),
+  ];
+
+  if (games.length === 1) {
+    return el("div", { class: "pin-popup" }, el("h3", {}, first.name), where, whenAndWho(first));
+  }
+  return el(
+    "div",
+    { class: "pin-popup" },
+    el("h3", {}, first.place),
+    first.address && el("p", { class: "muted" }, first.address),
+    el(
+      "ul",
+      {},
+      games.map((game) =>
+        el(
+          "li",
+          {},
+          el("strong", {}, game.name),
+          // Only when this game saved a different name for the same spot.
+          game.place !== first.place && el("p", {}, game.place),
+          whenAndWho(game),
+        ),
+      ),
+    ),
+  );
 }
 
 function stopTracking() {
