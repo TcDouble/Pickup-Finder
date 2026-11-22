@@ -28,6 +28,7 @@ export const PAGE_DIRS = [
   "notifications",
   "rate-players",
   "recommended",
+  "social",
 ];
 
 // The page the app opens on. Like the website's "/", it sends signed-out users to login.

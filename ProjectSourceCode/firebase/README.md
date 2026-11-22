@@ -1,8 +1,8 @@
-# Firestore back end: games, sportsmanship, matchmaking, and notifications
+# Firestore back end: games, sportsmanship, matchmaking, notifications, friends, and who's online
 
 **Owner:** Jun
 
-Pickup games live in the Firestore `events` collection, the feedback players leave each other after a game lives in `feedback` and `sportsmanship`, and notification settings and the inbox live in `notificationSettings` and `notifications`. Pages don't talk to these collections directly: they call the functions in [`events.js`](events.js), [`sportsmanship.js`](sportsmanship.js), [`matchmaking.js`](matchmaking.js), and [`notifications.js`](notifications.js), and [`firestore.rules`](firestore.rules) makes Firestore refuse anything those functions wouldn't allow (going over the player limit, editing someone else's game, RSVPing another person, rating someone you didn't play with, reading someone else's phone number).
+Pickup games live in the Firestore `events` collection, the feedback players leave each other after a game lives in `feedback` and `sportsmanship`, notification settings and the inbox live in `notificationSettings` and `notifications`, friends and friend requests live in `friendships`, and who's online lives in `presence`. Pages don't talk to these collections directly: they call the functions in [`events.js`](events.js), [`sportsmanship.js`](sportsmanship.js), [`matchmaking.js`](matchmaking.js), [`notifications.js`](notifications.js), [`friends.js`](friends.js), and [`presence.js`](presence.js), and [`firestore.rules`](firestore.rules) makes Firestore refuse anything those functions wouldn't allow (going over the player limit, editing someone else's game, RSVPing another person, rating someone you didn't play with, reading someone else's phone number, accepting a friend request that wasn't sent to you).
 
 | File | What it is |
 | --- | --- |
@@ -11,8 +11,11 @@ Pickup games live in the Firestore `events` collection, the feedback players lea
 | `sportsmanship.js` | Rate other players after a game, and read a player's score, feedback, and games played ([below](#sportsmanship-ratings)). |
 | `matchmaking.js` | Suggest games whose players have a sportsmanship score close to yours ([below](#matchmaking)). |
 | `notifications.js` | Notification settings (email, text, desktop; match alerts, reminders, feedback requests) and the in-app inbox ([below](#notifications)). The notifier in [`../notifier/`](../notifier/) sends the messages. |
+| `friends.js` | Friend requests, the friends list, finding players by name, and friends' upcoming games ([below](#friends)). |
+| `presence.js` | Who's online now: checking in while a page is open, and the live list of players online ([below](#whos-online)). |
+| `social-helpers.js` | Plain helpers for those two (`pairId`, `isOnline`, ...), with no Firebase imports, so they're unit tested in `../test/social-helpers.spec.js`. |
 | `firebase-messaging-sw.js` | Service worker that shows desktop notifications while the site is closed. |
-| `firestore.rules` | Security rules for `users`, `events`, `feedback`, `sportsmanship`, `notificationSettings`, and `notifications`. |
+| `firestore.rules` | Security rules for `users`, `events`, `feedback`, `sportsmanship`, `notificationSettings`, `notifications`, `friendships`, and `presence`. |
 | `storage.rules` | Storage security rules: each user can upload only their own profile picture (`profilePictures/{uid}/avatar`). Tested in `../test/storage-rules.spec.js`. |
 | `firestore.indexes.json` | The composite indexes the searches need. |
 | `firebase.json`, `.firebaserc` | Firebase CLI settings for deploying and for the local emulators. |
@@ -354,6 +357,85 @@ await markNotificationRead(items[0].id);
 | `notifications/invalid-token` | The browser didn't give a push token. |
 | `notifications/not-found` | `markNotificationRead` with an ID that isn't yours or doesn't exist. |
 
+## Friends
+
+GitHub issue #33. Players send each other friend requests, accept or decline them, and can unfriend later. The home page's Friends panel ([`../social/friends-panel.js`](../social/friends-panel.js)) shows your friends (online ones first), your requests, the upcoming games your friends are going to, and a search for players by name.
+
+```js
+import { sendFriendRequest, acceptFriendRequest, removeFriend, watchFriends } from "../firebase/friends.js";
+
+const stop = watchFriends(({ friends, incoming, outgoing }) => draw(friends, incoming, outgoing));
+await sendFriendRequest(otherUid); // "outgoing", or "friend" if they had already asked you
+await acceptFriendRequest(otherUid); // only the player who was asked
+await removeFriend(otherUid); // decline, cancel, or unfriend
+```
+
+### The `friendships` collection
+
+`friendships/{pairId}`, one document per pair of players. `pairId` is the two user IDs, sorted and joined with `_` (`pairId()` in `social-helpers.js`). Firestore has no unique constraints, so this ID is what stops a pair from having two documents, whoever asks first. Firebase user IDs never contain `_`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `userIds` | array | Both user IDs, sorted. "My friends" is one `array-contains` query on it. |
+| `requesterId` | string | Who asked. |
+| `addresseeId` | string | Who was asked. |
+| `status` | string | `pending` or `accepted`. |
+| `createdAt` | timestamp | Set by the server. |
+| `acceptedAt` | timestamp | Added when the request is accepted. |
+
+Declining, cancelling, and unfriending all delete the document, so the two players can ask each other again later. If A asks B while B's request to A is still pending, `sendFriendRequest` accepts B's request instead. If both ask at the same moment, the second one's write is refused, and `friends.js` runs it again, which then accepts the first one's request (like the last-spot race in `events.js`).
+
+### Functions
+
+| Function | What it does |
+| --- | --- |
+| `sendFriendRequest(uid)` | Asks another player who has a profile. Returns `"outgoing"`, or `"friend"` when it accepted their request. Asking twice is fine. |
+| `acceptFriendRequest(uid)` | Accepts a request that player sent you. Returns `"friend"`. |
+| `removeFriend(uid)` | Declines, cancels, or unfriends. Fine when there's nothing to remove. |
+| `listFriends()` / `watchFriends(onChange)` | `{ friends, incoming, outgoing }`, once or live. Each item has `userId`, `relation`, `createdAt`, `acceptedAt`, and the player's `displayName`, `photoURL`, `city`, and `sports`. Friends are sorted by name, requests newest first. |
+| `findPlayers(text)` | Up to 10 players whose display name starts with `text`, not counting you. Firestore can only match the start of a name, and it's case sensitive, so it also tries the text with a capital first letter and in lowercase. |
+| `listFriendsGames(friendIds)` | Upcoming games (not cancelled) any of those players are going to, soonest first, shaped like `listEvents` results plus `friendIds` (which of them are going). |
+| `getPlayerProfiles(uids)` | Profiles for a list of players, read 30 at a time and kept for 5 minutes. |
+
+Errors are `FriendError`s, a kind of `EventError`, so `friendlyEventError(err)` works: `events/not-signed-in`, `friends/self` (asking yourself), `friends/not-found` (no such player, or no profile), `friends/no-request` (accepting a request that's gone), and `friends/not-yours` (accepting your own request).
+
+## Who's online
+
+GitHub issue #32. The home page's Online now panel ([`../social/online-panel.js`](../social/online-panel.js)) lists the players who have PickupFinder open right now, friends first, with an Add friend button for everyone else. The Friends panel shows each friend as online or when they were last on ("Active 2h ago").
+
+Firestore has no "on disconnect" like the Realtime Database, so pages check in on a timer instead. `startPresence()` (called once by the home page) marks you online now and again every minute (`HEARTBEAT_MS`) while the page is showing, pauses while it's in the background, and marks you offline when the page closes or you log out. A player is online when their page checked in within the last 3 minutes (`ONLINE_WINDOW_MS`), so someone whose page closed without saying so drops off the list on their own.
+
+```js
+import { startPresence, watchOnlinePlayers, setShowOnline } from "../firebase/presence.js";
+
+startPresence(); // once, after Firebase Auth has loaded the user
+const stop = watchOnlinePlayers((players) => draw(players)); // [{ userId, displayName, photoURL, city, sports, lastSeen }]
+await setShowOnline(false); // hide me
+```
+
+### The `presence` collection
+
+`presence/{uid}`, one per player who has opened the home page. Any signed-in player can read it, so it holds only this:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `state` | string | `online`, `offline`, or `hidden`. |
+| `lastSeen` | timestamp or null | When the page last checked in or out, set by the server. `null` while hidden. |
+
+Players can hide themselves with the "Show me in this list" box. A hidden player isn't in the list and keeps no `lastSeen`, so nobody can tell when they were on. The setting is saved in this document, so it applies on every device.
+
+The online list is one live query (state `online`, `lastSeen` in the last 3 minutes, newest first), which needs the `presence` index in `firestore.indexes.json`. Every check-in by someone online is one read for each player watching, so the panel stops watching while its page is in the background.
+
+### Functions
+
+| Function | What it does |
+| --- | --- |
+| `startPresence()` | Keeps your status current while the page is open, as described above. Does nothing if you're hidden. Returns a function that stops it. |
+| `checkIn()` / `checkOut()` | Mark yourself online or offline now. `checkOut` does nothing while you're hidden. |
+| `setShowOnline(show)` / `getShowOnline()` | Hide or show yourself in the list. |
+| `watchOnlinePlayers(onChange)` | The players online now, live, most recently seen first, without you and without players who have no profile. Returns an unsubscribe function. |
+| `getPresence(uids)` | `{ state, lastSeen, online }` for a list of players, for the friends list. |
+
 ## Rules and indexes
 
 The rules let signed-in users read games, feedback, and totals, and enforce, on Firestore's side:
@@ -367,6 +449,8 @@ The rules let signed-in users read games, feedback, and totals, and enforce, on 
 - A player's `sportsmanship` totals only change together with a new feedback document about them, by exactly 1 on the matching counter, so nobody can raise their own score.
 - Only you can read or change your `notificationSettings`. They must pass the same checks as `notifications.js`: texts need a valid phone number, desktop needs a browser, and match alerts need real sports, a distance from 1 to 100 km, and a score from 0 to 100.
 - You can read only your own `notifications`, and the only change you can make is marking one read. Nobody can create or delete them from a browser.
+- A friend request comes from the signed-in user, to another player who has a profile, starts out `pending`, and its ID must be the two user IDs, sorted. Only the player who was asked can accept it, and accepting is the only change anyone can make. Either player can delete it, and only the two of them can read it.
+- You can write only your own `presence`, with the server's time (or no time while hidden), and only while you have a profile, so a deleted account can't show up online. Signed-in users can read everyone's.
 
 **Deploying rules replaces all the rules in the project.** That's why `firestore.rules` also has the `users` rule (only you can write or delete your profile, with each field checked; signed-in users can read profiles). To deploy the rules and indexes, from this folder:
 
@@ -376,7 +460,7 @@ npx firebase login
 npm run deploy:firestore
 ```
 
-`firestore.indexes.json` also has the indexes the notifier's searches need (games by status and end time, and notifications by player, kind, and time), so deploy before starting the notifier. Indexes take a few minutes to build after deploying. If a search fails with "The query requires an index", the browser console error has a link that creates the missing one; add it to `firestore.indexes.json` too.
+`firestore.indexes.json` also has the indexes the notifier's searches need (games by status and end time, and notifications by player, kind, and time), so deploy before starting the notifier, and the one the online list needs (presence by state and time). Indexes take a few minutes to build after deploying. If a search fails with "The query requires an index", the browser console error has a link that creates the missing one; add it to `firestore.indexes.json` too.
 
 ## Running the tests
 
@@ -387,7 +471,7 @@ npm install
 npm test
 ```
 
-`npm test` starts the Auth and Firestore emulators with a demo project, so it never touches the real database and needs no login. It runs the real `events.js`, `sportsmanship.js`, `matchmaking.js`, and `notifications.js` (with the CDN imports swapped for the same version from npm) as several users at once, plus rules tests that try writes the app would never make on purpose. Games that already ended are put in the database directly, with the rules turned off, since the rules only allow creating games in the future.
+`npm test` starts the Auth and Firestore emulators with a demo project, so it never touches the real database and needs no login. It runs the real `events.js`, `sportsmanship.js`, `matchmaking.js`, `notifications.js`, `friends.js`, and `presence.js` (with the CDN imports swapped for the same version from npm) as several users at once, plus rules tests that try writes the app would never make on purpose. Games that already ended are put in the database directly, with the rules turned off, since the rules only allow creating games in the future.
 
 `npm run emulators` starts the emulators on their own, with the Emulator UI at http://127.0.0.1:4000.
 

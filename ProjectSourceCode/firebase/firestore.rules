@@ -356,5 +356,97 @@ service cloud.firestore {
 
       allow create, delete: if false;
     }
+
+    // ------------------------------------------------------------------
+    // Friends list (GitHub issue #33). See friends.js.
+    //
+    // friendships/{pairId}: one document per pair of players. pairId is
+    // their two user IDs, sorted and joined with '_', so a pair can't have
+    // two documents whoever asks first. Firebase user IDs never contain '_'.
+    // ------------------------------------------------------------------
+
+    function userDoc(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    match /friendships/{pairId} {
+
+      function friendshipFields() {
+        return ['userIds', 'requesterId', 'addresseeId', 'status', 'createdAt'];
+      }
+
+      // You ask someone else who has a profile. The ID and userIds are the
+      // two of you, sorted, and it starts out pending.
+      function validRequest(f) {
+        let me = request.auth.uid;
+        let them = f.addresseeId;
+        return f.keys().hasAll(friendshipFields())
+          && f.keys().hasOnly(friendshipFields())
+          && f.requesterId == me
+          && them is string && them != me
+          && f.userIds == (me < them ? [me, them] : [them, me])
+          && pairId == f.userIds[0] + '_' + f.userIds[1]
+          && f.status == 'pending'
+          && f.createdAt == request.time
+          && exists(userDoc(them));
+      }
+
+      // Only the player who was asked can accept, and accepting is the only
+      // change anyone can make.
+      function isAccept() {
+        return resource.data.addresseeId == request.auth.uid
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acceptedAt'])
+          && request.resource.data.status == 'accepted'
+          && request.resource.data.acceptedAt == request.time;
+      }
+
+      // The ID names both players, so this also works for a request that
+      // doesn't exist yet (friends.js checks before asking).
+      function isMine() {
+        return request.auth.uid in pairId.split('_');
+      }
+
+      // Only the two players can see their friendship. Lists must filter on
+      // userIds array-contains your own ID, or Firestore refuses them.
+      allow get: if signedIn() && isMine();
+      allow list: if signedIn() && request.auth.uid in resource.data.userIds;
+
+      allow create: if signedIn() && validRequest(request.resource.data);
+      allow update: if signedIn() && isAccept();
+
+      // Either player can delete it: declining, cancelling, and unfriending.
+      allow delete: if signedIn() && isMine();
+    }
+
+    // ------------------------------------------------------------------
+    // Who's online now (GitHub issue #32). See presence.js.
+    //
+    // presence/{uid}: when the player's page last checked in. Any signed-in
+    // player can read it, so it holds only the state and that time. Hidden
+    // players keep no time at all.
+    // ------------------------------------------------------------------
+
+    match /presence/{userId} {
+
+      // Keep in sync with PRESENCE_STATES in social-helpers.js.
+      function validPresence(p) {
+        return p.keys().hasAll(['state', 'lastSeen'])
+          && p.keys().hasOnly(['state', 'lastSeen'])
+          && p.state in ['online', 'offline', 'hidden']
+          && (p.state == 'hidden' ? p.lastSeen == null : p.lastSeen == request.time);
+      }
+
+      allow read: if signedIn();
+
+      // Only your own, only with the server's time, and only while you have
+      // a profile, so a deleted account can't come back online.
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && validPresence(request.resource.data)
+        && exists(userDoc(userId));
+
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
   }
 }

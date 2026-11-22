@@ -35,6 +35,8 @@ Not deployed yet. The link will be added here once the app is deployed.
 - **Recommended Games and Matchmaking:** The Recommended panel ranks open games by how close their players' sportsmanship scores are to yours, with a Join button on each game.
 - **Sportsmanship Ratings:** After a game, the Rate players panel lets you rate each other player positive or negative, with an optional comment, within 14 days. Each player gets a public sportsmanship score from 0 to 100.
 - **Notifications:** The Notifications panel shows an in-app inbox and notification settings. A Node.js notifier server, run in Docker, sends match alerts for new games, a reminder an hour before each game, and a request to rate the players after it, by email, text message, or desktop notification, whichever the player turns on.
+- **Friends:** The Friends panel lets you send, accept, decline, and cancel friend requests, find players by name, unfriend, see which friends are online or when they were last on, and see the upcoming games your friends are going to, with a Join button.
+- **Who's Online:** The Online now panel lists the players who have the app open right now, friends first, with an Add friend button, and the sidebar shows how many are online. A "Show me in this list" box lets you hide yourself.
 - **Event Database:** Store game information and participant data in Firebase Firestore. Firestore security rules decide who can read and change each collection, and enforce the player limit and host-only edits.
 - **User Interface:** Responsive pages built with HTML, CSS, and JavaScript, sharing one global `style.css`.
 
@@ -43,7 +45,7 @@ Not deployed yet. The link will be added here once the app is deployed.
 - Sidebar filters: the home page loads `filters.js` (sport chips, time, skill level, and location search), and the controls respond, but the map doesn't use them to hide games yet.
 - My games panel (Joined, Hosting, and Past), and joining a game from its map pin.
 - Event editing.
-- Deploying the Firestore security rules, indexes, and Storage rules to the live Firebase project with `npm run deploy:rules` from `ProjectSourceCode/`. The Rate players, Notifications, and Recommended panels need them.
+- Deploying the Firestore security rules, indexes, and Storage rules to the live Firebase project with `npm run deploy:rules` from `ProjectSourceCode/`. The Friends and Online now panels need the new `friendships` and `presence` rules and the `presence` index before they work on the live site.
 - Deploying the application on Render (Lab 12). The web server, `ProjectSourceCode/index.js`, is ready to run there.
 
 ## Technologies Used
@@ -80,9 +82,9 @@ To run the tests or the notifier:
 - `ProjectSourceCode/index.js` — Web server that serves the pages and the Google Maps key (what Render runs)
 - `ProjectSourceCode/login-and-registration/` — Login, registration, and home pages, with the map
 - `ProjectSourceCode/create-game/` — Game creation functionality
-- `ProjectSourceCode/recommended/`, `rate-players/`, `notifications/` — Home page panels for recommended games, sportsmanship ratings, and notifications
+- `ProjectSourceCode/recommended/`, `rate-players/`, `notifications/`, `social/` — Home page panels for recommended games, sportsmanship ratings, notifications, friends, and who's online
 - `ProjectSourceCode/assets/` — Global `style.css`, shared panel helpers, and images
-- `ProjectSourceCode/firebase/` — Firebase configuration and backend: events, sportsmanship, matchmaking, notifications, security rules, and their tests
+- `ProjectSourceCode/firebase/` — Firebase configuration and backend: events, sportsmanship, matchmaking, notifications, friends, who's online, security rules, and their tests
 - `ProjectSourceCode/notifier/` — Notifier server that sends email, text, and desktop notifications (Node.js, Docker)
 - `ProjectSourceCode/test/` — Automated tests
 - `ProjectSourceCode/docker-compose.test.yaml` — Docker testing configuration

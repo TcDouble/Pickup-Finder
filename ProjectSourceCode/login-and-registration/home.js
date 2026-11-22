@@ -66,7 +66,8 @@ $("logout-btn").addEventListener("click", async () => {
 // Sidebar buttons open their panel over the map; clicking the open one again closes it.
 // "+ Host a game" opens the create-game form, which ../create-game/create-game.js runs.
 // Notifications, Recommended, and Rate players are run by the scripts in
-// ../notifications/, ../recommended/, and ../rate-players/.
+// ../notifications/, ../recommended/, and ../rate-players/, and Friends and
+// Online now by the scripts in ../social/.
 // My games and Profile are still wireframe placeholders.
 const navButtons = document.querySelectorAll(".sidebar [data-panel]");
 const panels = document.querySelectorAll(".panel");

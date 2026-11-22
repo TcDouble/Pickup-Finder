@@ -22,14 +22,20 @@ export function startTestEnv() {
 }
 
 // Copies of the app's modules for one user: events.js, sportsmanship.js,
-// matchmaking.js, and notifications.js, all sharing that user's emulator app.
+// matchmaking.js, notifications.js, friends.js, and presence.js, all sharing
+// that user's emulator app.
 async function loadModules(tag) {
   const events = await import(`../events.js?as=${tag}`);
   const sportsmanship = await import(`../sportsmanship.js?as=${tag}`);
   const matchmaking = await import(`../matchmaking.js?as=${tag}`);
   const notifications = await import(`../notifications.js?as=${tag}`);
+  const friends = await import(`../friends.js?as=${tag}`);
+  const presence = await import(`../presence.js?as=${tag}`);
   const config = await import(`./emulator-config.js?as=${tag}`);
-  return { modules: { ...events, ...sportsmanship, ...matchmaking, ...notifications }, config };
+  return {
+    modules: { ...events, ...sportsmanship, ...matchmaking, ...notifications, ...friends, ...presence },
+    config,
+  };
 }
 
 /** Load a copy of the app's modules signed in as a new emulator user. */
