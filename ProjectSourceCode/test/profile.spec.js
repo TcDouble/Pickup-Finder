@@ -260,6 +260,42 @@ describe("profile.js (Profile panel on the Firebase emulators)", () => {
       expect(again.uid).to.not.equal(uid);
     });
 
+    it("removes the player's friends, friend requests and online status", async () => {
+      const { uid } = await signUp("friends");
+      const pair = (a, b) => (a < b ? [a, b] : [b, a]);
+      const friendship = (other, extra) => {
+        const userIds = pair(uid, other);
+        return writeDoc(`friendships/${userIds.join("_")}`, {
+          userIds,
+          requesterId: other,
+          addresseeId: uid,
+          createdAt: new Date(),
+          ...extra,
+        });
+      };
+      await friendship("friend-a", { status: "accepted", acceptedAt: new Date() });
+      await friendship("friend-b", { status: "pending" });
+      const others = pair("friend-a", "friend-b");
+      await writeDoc(`friendships/${others.join("_")}`, {
+        userIds: others,
+        requesterId: others[0],
+        addresseeId: others[1],
+        status: "accepted",
+        createdAt: new Date(),
+        acceptedAt: new Date(),
+      });
+      await writeDoc(`presence/${uid}`, { state: "online", lastSeen: new Date() });
+
+      await deleteAccount(site, PASSWORD);
+
+      expect(await readDoc(`friendships/${pair(uid, "friend-a").join("_")}`)).to.equal(null);
+      expect(await readDoc(`friendships/${pair(uid, "friend-b").join("_")}`)).to.equal(null);
+      expect(await readDoc(`presence/${uid}`)).to.equal(null);
+      // Other players' friendships stay
+      expect(await readDoc(`friendships/${others.join("_")}`)).to.not.equal(null);
+      await deleteDocById(testEnv, "friendships", others.join("_"));
+    });
+
     it("signs out the deleted user so they can't log back in", async () => {
       const { email } = await signUp("nologin");
       await deleteAccount(site, PASSWORD);

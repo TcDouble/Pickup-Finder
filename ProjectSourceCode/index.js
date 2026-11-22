@@ -31,6 +31,7 @@ const PUBLIC_DIRS = [
   "notifications",
   "rate-players",
   "recommended",
+  "social",
 ];
 
 // home.js imports the Maps key from this file. Developers can still keep a

@@ -1,6 +1,9 @@
-// Small helpers shared by the Notifications, Recommended, and Rate players
-// panels on the home page. Nothing here talks to Firebase, so the formatting
-// and filtering are unit tested on their own (../test/panel-helpers.spec.js).
+// Small helpers shared by the Notifications, Recommended, Rate players,
+// Friends, and Online now panels on the home page. Nothing here talks to
+// Firebase, so the formatting and filtering are unit tested on their own
+// (../test/panel-helpers.spec.js).
+
+import { isOnline } from "../firebase/social-helpers.js";
 
 export const SPORT_NAMES = {
   basketball: "Basketball",
@@ -121,6 +124,37 @@ export function notificationTarget(item) {
   if (item.type === "feedback") return { name: "rate", gameId: item.eventId };
   if (item.type === "match") return { name: "recommended", gameId: item.eventId };
   return null;
+}
+
+/**
+ * How recently a player was on, for the friends list: "Online now", "Active
+ * 5m ago", "Active 3h ago", "Active Nov 3". Empty for players who hid
+ * themselves or never opened the app. `presence` is { state, lastSeen }.
+ */
+export function activityText(presence, now = new Date()) {
+  if (!presence || presence.state === "hidden" || !(presence.lastSeen instanceof Date)) return "";
+  if (isOnline(presence, now)) return "Online now";
+  const ago = timeAgo(presence.lastSeen, now);
+  if (ago === "now") return "Active just now";
+  return /^\d/.test(ago) ? `Active ${ago} ago` : `Active ${ago}`;
+}
+
+/** "Boulder · Soccer, Tennis": a player's city and sports, for player lists. */
+export function playerDetails({ city = "", sports = [] } = {}) {
+  const sportList = (sports ?? []).map(sportName).join(", ");
+  return [city, sportList].filter(Boolean).join(" · ");
+}
+
+/**
+ * Who's going, for a friends' game: "Riley is going", "Riley and Sam are
+ * going", "Riley, Sam, and 2 more are going".
+ */
+export function friendsGoingText(names) {
+  const list = names.filter(Boolean);
+  if (list.length === 0) return "";
+  if (list.length === 1) return `${list[0]} is going`;
+  if (list.length === 2) return `${list[0]} and ${list[1]} are going`;
+  return `${list[0]}, ${list[1]}, and ${list.length - 2} more are going`;
 }
 
 // ---------------------------------------------------------------------------

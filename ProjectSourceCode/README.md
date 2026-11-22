@@ -2,7 +2,7 @@
 
 **Owner:** Jun
 **Back end:** Firebase (Authentication and Cloud Firestore)
-**Status:** The `events` collection, sportsmanship ratings and matchmaking (GitHub issue #13), notification settings (issue #17), their security rules, and their tests are built ([`firebase/`](firebase/)), and so is the notifier server that sends the notifications ([`notifier/`](notifier/)). The rules and indexes haven't been deployed to the live project yet, and the notifier hasn't run against it.
+**Status:** The `events` collection, sportsmanship ratings and matchmaking (GitHub issue #13), notification settings (issue #17), the friends list (issue #33), who's online (issue #32), their security rules, and their tests are built ([`firebase/`](firebase/)), and so is the notifier server that sends the notifications ([`notifier/`](notifier/)). The rules for `friendships` and `presence` and the `presence` index haven't been deployed to the live project yet, and the notifier hasn't run against it.
 
 **Extra credit:** the [Risks](#risks) section at the end of this file is our submission for extra credit.
 
@@ -22,11 +22,11 @@
 Pickup-Finder lets people post and join local pickup games. We use Firebase as the back end, and the pages talk to it directly:
 
 - **Firebase Authentication** handles accounts, passwords, and staying logged in.
-- **Cloud Firestore** stores profiles (`users`), games (`events`, including who has RSVPed), the feedback players leave each other after a game (`feedback` and `sportsmanship`), and notification settings and the notifications we've sent (`notificationSettings` and `notifications`).
+- **Cloud Firestore** stores profiles (`users`), games (`events`, including who has RSVPed), the feedback players leave each other after a game (`feedback` and `sportsmanship`), notification settings and the notifications we've sent (`notificationSettings` and `notifications`), friends and friend requests (`friendships`), and who's online (`presence`).
 - **Security rules** ([`firebase/firestore.rules`](firebase/firestore.rules)) decide who can read and change what. Anyone can call Firestore from their browser, so the rules are what actually protect the data.
 - **The notifier** ([`notifier/`](notifier/)) is the one server we run: a small Node.js program in a Docker container that watches Firestore and sends match alerts, game reminders, and feedback requests by email, text message, and desktop notification, so players get them even when the site is closed.
 
-Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN and gets `app`, `auth`, and `db` from [`firebase/firebase-config.js`](firebase/firebase-config.js). Pages that deal with games use the functions in [`firebase/events.js`](firebase/events.js), pages that deal with ratings use [`firebase/sportsmanship.js`](firebase/sportsmanship.js) and [`firebase/matchmaking.js`](firebase/matchmaking.js), and notification settings use [`firebase/notifications.js`](firebase/notifications.js), instead of calling Firestore themselves.
+Every page loads the Firebase JavaScript SDK (version 10.12.2) from Google's CDN and gets `app`, `auth`, and `db` from [`firebase/firebase-config.js`](firebase/firebase-config.js). Pages that deal with games use the functions in [`firebase/events.js`](firebase/events.js), pages that deal with ratings use [`firebase/sportsmanship.js`](firebase/sportsmanship.js) and [`firebase/matchmaking.js`](firebase/matchmaking.js), notification settings use [`firebase/notifications.js`](firebase/notifications.js), and the friends list and who's online use [`firebase/friends.js`](firebase/friends.js) and [`firebase/presence.js`](firebase/presence.js), instead of calling Firestore themselves.
 
 ## Folder layout
 
@@ -36,12 +36,14 @@ ProjectSourceCode/
 ├── index.js                     # web server: serves the pages and the Maps key (Render runs it)
 ├── assets/
 │   ├── style.css                # global styles every page links (CU gold, black, grays)
-│   ├── panel-helpers.js         # shared helpers for the home page's Notifications, Recommended, and Rate players panels
+│   ├── panel-helpers.js         # shared helpers for the home page's panels (Notifications, Recommended, Rate players, Friends, Online now)
+│   ├── join-button.js           # the Join button on game cards in Recommended and Friends
 │   └── no-profile-picture-icon.* # default profile picture
 ├── create-game/                 # host-a-game page
 ├── notifications/               # home page panel: notification inbox and settings
 ├── recommended/                 # home page panel: recommended games (matchmaking), with Join
 ├── rate-players/                # home page panel: rate the other players after a game
+├── social/                      # home page panels: Friends (friends list) and Online now
 ├── firebase/
 │   ├── firebase-config.js       # shared setup: exports app, auth, db, storage
 │   ├── storage.rules            # security rules for profile pictures
@@ -49,6 +51,9 @@ ProjectSourceCode/
 │   ├── sportsmanship.js         # rating other players after a game
 │   ├── matchmaking.js           # suggesting games by sportsmanship score
 │   ├── notifications.js         # notification settings and the inbox
+│   ├── friends.js               # friend requests, the friends list, friends' games
+│   ├── presence.js              # who's online now
+│   ├── social-helpers.js        # plain helpers for those two (unit tested)
 │   ├── firebase-messaging-sw.js # shows desktop notifications while the site is closed
 │   ├── firestore.rules          # security rules for every collection
 │   ├── firestore.indexes.json   # indexes the game searches need
@@ -86,7 +91,7 @@ Any signed-in player can read any profile (to show names next to games), so don'
 
 The `users` rule checks every field's type and length (keep the limits in sync with `validateRegistration.js` and `validateProfile.js`), rejects any other field, and lets only the owner create, change, or delete their profile.
 
-Deleting an account (Profile panel → Delete account) cancels the player's upcoming hosted games, removes them from upcoming games they joined, and deletes their `notificationSettings`, picture, profile, and login. Past games, feedback, and sportsmanship totals stay, so other players' history doesn't change.
+Deleting an account (Profile panel → Delete account) cancels the player's upcoming hosted games, removes them from upcoming games they joined, and deletes their `notificationSettings`, friendships and friend requests, picture, profile, `presence`, and login. Past games, feedback, and sportsmanship totals stay, so other players' history doesn't change.
 
 Passwords are never stored in Firestore. Firebase Authentication keeps them.
 
@@ -159,6 +164,30 @@ Every notification the notifier has sent, which is also each player's in-app inb
 
 Rules: you can read only your own and mark them read. Only the notifier writes them, and nobody can delete them. The notifier's own bookkeeping is in `notifier/state`, which no browser can read. Details for both collections are in [`firebase/README.md`](firebase/README.md#notifications).
 
+### `friendships/{pairId}`
+
+The friends list (GitHub issue #33): one document per pair of players, from the first friend request on. The ID is the two user IDs, sorted and joined with `_`, so a pair can't end up with two documents whoever asks first.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `userIds` | array | Both user IDs, sorted. Used to look up a player's friends. |
+| `requesterId`, `addresseeId` | string | Who asked, and who was asked. |
+| `status` | string | `pending` or `accepted`. |
+| `createdAt`, `acceptedAt` | timestamp | `acceptedAt` is added when the request is accepted. |
+
+Rules: only the two players can read it. You can only ask for yourself, someone else who has a profile, and the request starts out pending. Only the player who was asked can accept it, and either player can delete it (declining, cancelling, and unfriending). Details and functions are in [`firebase/README.md`](firebase/README.md#friends).
+
+### `presence/{uid}`
+
+Who's online now (GitHub issue #32). While a player has the home page open, it checks in every minute, and a player counts as online for 3 minutes after their last check-in.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `state` | string | `online`, `offline` (the page closed or they logged out), or `hidden` (they chose not to show up). |
+| `lastSeen` | timestamp or null | Set by the server. `null` while hidden. |
+
+Rules: any signed-in player can read it, and you can only write your own, with the server's time, while you have a profile. Details are in [`firebase/README.md`](firebase/README.md#whos-online).
+
 ## Working with the database
 
 You need Node 20 or newer, and Java 21 or newer for the local emulators. Run these from `ProjectSourceCode/firebase/`:
@@ -208,13 +237,15 @@ These are the requirements from [`requirement.txt`](../MilestoneSubmissions/requ
 
 ## Optional features
 
-These are stretch goals from the original database plan, redesigned for Firestore. Matchmaking by sportsmanship (GitHub issue #13) is built: see [Sportsmanship and matchmaking](#sportsmanship-and-matchmaking-built) below. The friends list and skill ratings are still designs. Start them only after the required pages work. If we fall behind, cut skill ratings first, then the friends list, as [Risk 6](#6-optional-features-crowd-out-the-required-ones) says.
+These are stretch goals from the original database plan, redesigned for Firestore. Matchmaking by sportsmanship (GitHub issue #13) and the friends list (issue #33) are built: see [Sportsmanship and matchmaking](#sportsmanship-and-matchmaking-built) and [Friends list](#friends-list-built) below. Skill ratings are still a design. Start them only after the required pages work, and cut them first if we fall behind, as [Risk 6](#6-optional-features-crowd-out-the-required-ones) says.
 
 Each one adds a collection or fields, so it also needs rules, tests, and updates to the tables in this file, as [Conventions](#conventions) describes.
 
-### Friends list
+### Friends list (built)
 
-A new `friendships/{pairId}` collection holds one document per pair of users. The document ID is the two user IDs, sorted and joined with `_`. Firestore has no unique constraints, so this ID is what stops two people from having more than one document, whichever of them sent the request.
+Built for GitHub issue #33 as designed here, in [`firebase/friends.js`](firebase/friends.js), with the [`friendships`](#friendshipspairid) collection above. The home page's Friends panel shows your friends, your requests, the games your friends are going to, and a search for players by name. Who's online (issue #32) came with it: see [`presence`](#presenceuid) above.
+
+The design it follows: a new `friendships/{pairId}` collection holds one document per pair of users. The document ID is the two user IDs, sorted and joined with `_`. Firestore has no unique constraints, so this ID is what stops two people from having more than one document, whichever of them sent the request.
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -234,8 +265,7 @@ Rules:
 
 Queries:
 
-- **My friends:** `userIds` array-contains my ID, and `status == 'accepted'`. This needs a composite index in `firestore.indexes.json`.
-- **Requests waiting for me:** `addresseeId ==` my ID, and `status == 'pending'`.
+- **My friends and requests:** `userIds` array-contains my ID, split into friends and requests on the page. One query covers both, and needs no composite index. (The first design had a second query on `addresseeId`, but the rules can only check list queries that filter on `userIds`.)
 - **Games my friends are going to:** upcoming events where `participantIds` array-contains-any of my friends' IDs. Firestore allows up to 30 IDs in one query, so split longer friend lists into batches.
 
 If A sends B a request while B's request to A is still pending, the document already exists. The page should accept B's request instead of creating a new one.

@@ -540,3 +540,46 @@ button.list-item:hover { background: var(--gold-tint); }
 .rated { font-size: 13px; font-weight: 600; color: var(--muted); }
 .rate-form { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 6px; width: 100%; }
 .rate-form .chip { min-height: 36px; }
+
+/* ---------- Home: Friends and Online now panels ---------- */
+/* Rows of players: picture, name and details, then buttons on the right. */
+.player-row { align-items: center; }
+.avatar-wrap { position: relative; flex-shrink: 0; }
+.list-icon.photo { display: block; object-fit: cover; }
+/* Green dot on the picture of a player who's online now */
+.online-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--success);
+}
+.activity { font-size: 13px; }
+.activity.online { color: var(--success); font-weight: 600; }
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  max-width: 55%;
+}
+.row-actions .link-btn { align-self: center; }
+.row-actions .hint { flex-basis: 100%; text-align: right; }
+.search-row { display: flex; gap: 8px; }
+.search-row input { flex: 1 1 auto; min-width: 0; }
+.search-row .btn { flex-shrink: 0; }
+#panel-friends .tabs button { padding: 0 4px; font-size: 13px; }
+/* The Online now count gets a green dot, like the one on players' pictures. */
+.badge.online { gap: 4px; padding: 0 7px; }
+.badge.online::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}

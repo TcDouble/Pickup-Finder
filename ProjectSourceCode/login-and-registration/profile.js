@@ -132,8 +132,9 @@ export async function sendPasswordReset({ auth }) {
  * Delete the signed-in user's account after checking their password.
  *
  * Cancels upcoming games they host, leaves upcoming games they joined, and
- * deletes their notification settings, picture, profile and login, in that
- * order, so a failure part way leaves a login they can retry with. Past games,
+ * deletes their notification settings, friends and friend requests, picture,
+ * profile, online status and login, in that order, so a failure part way
+ * leaves a login they can retry with. Past games,
  * feedback and sportsmanship totals stay, because other players' history
  * depends on them (and the rules don't allow deleting feedback).
  * A wrong password throws "auth/invalid-credential" before anything is deleted.
@@ -161,7 +162,14 @@ export async function deleteAccount({ auth, db, storage }, password) {
   }
 
   await deleteDoc(doc(db, "notificationSettings", uid));
+  const friendships = await getDocs(
+    query(collection(db, "friendships"), where("userIds", "array-contains", uid)),
+  );
+  for (const friendship of friendships.docs) await deleteDoc(friendship.ref);
   await deleteIfExists(ref(storage, photoPath(uid)));
   await deleteDoc(doc(db, "users", uid));
+  // After the profile, because the rules only let players with a profile
+  // check in: an open page can't bring the account back online.
+  await deleteDoc(doc(db, "presence", uid));
   await deleteUser(user);
 }

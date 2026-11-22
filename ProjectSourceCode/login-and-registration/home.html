@@ -75,6 +75,16 @@
           <span class="grow">Rate players</span>
           <span class="badge" id="rate-badge" hidden></span>
         </button>
+        <button type="button" data-panel="friends" aria-pressed="false">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span class="grow">Friends</span>
+          <span class="badge" id="friends-badge" hidden></span>
+        </button>
+        <button type="button" data-panel="online" aria-pressed="false">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"></path></svg>
+          <span class="grow">Online now</span>
+          <span class="badge online" id="online-badge" hidden></span>
+        </button>
         <button type="button" data-panel="profile" aria-pressed="false">
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
           <span>Profile</span>
@@ -355,6 +365,70 @@
         </div>
       </section>
 
+      <!-- Friends list (GitHub issue #33); ../social/friends-panel.js runs it. -->
+      <section class="panel" id="panel-friends" aria-label="Friends" hidden>
+        <div class="panel-head">
+          <div class="panel-title">
+            <div class="eyebrow">Friends</div>
+            <h2 id="friends-heading">Your friends</h2>
+          </div>
+          <button type="button" class="close-btn" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+
+        <div class="tabs">
+          <button type="button" data-view="friends" aria-pressed="true">Friends</button>
+          <button type="button" data-view="requests" aria-pressed="false">Requests<span id="friends-requests-count"></span></button>
+          <button type="button" data-view="games" aria-pressed="false">Games</button>
+          <button type="button" data-view="find" aria-pressed="false">Add</button>
+        </div>
+
+        <p id="friends-message" class="message" role="alert" aria-live="polite"></p>
+
+        <div class="panel-view" id="friends-view-friends">
+          <div class="list" id="friends-list"></div>
+        </div>
+
+        <div class="panel-view" id="friends-view-requests" hidden>
+          <span class="section-label">Waiting for you</span>
+          <div class="list" id="friends-incoming"></div>
+          <span class="section-label">You asked</span>
+          <div class="list" id="friends-outgoing"></div>
+        </div>
+
+        <div class="panel-view" id="friends-view-games" hidden>
+          <p class="panel-intro muted">Upcoming games your friends are going to.</p>
+          <div class="list-text gap-10" id="friends-games"></div>
+        </div>
+
+        <form class="panel-view" id="friends-view-find" role="search" novalidate hidden>
+          <div class="field">
+            <label for="friends-search">Find players by name</label>
+            <div class="search-row">
+              <input id="friends-search" type="text" maxlength="30" autocomplete="off" enterkeyhint="search" placeholder="e.g. Riley">
+              <button type="submit" class="btn primary">Search</button>
+            </div>
+            <span class="hint">Type the start of their display name. Players online now are in Online now.</span>
+          </div>
+          <div class="list" id="friends-results"></div>
+        </form>
+      </section>
+
+      <!-- Players online now (GitHub issue #32); ../social/online-panel.js runs it. -->
+      <section class="panel" id="panel-online" aria-label="Online now" hidden>
+        <div class="panel-head">
+          <div class="panel-title">
+            <div class="eyebrow">Online now</div>
+            <h2 id="online-heading">Players online</h2>
+          </div>
+          <button type="button" class="close-btn" aria-label="Close"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <p class="panel-intro muted">Players who have PickupFinder open right now, friends first. Add someone to start a game together.</p>
+        <label class="check"><input type="checkbox" id="online-show-me" checked> Show me in this list</label>
+
+        <p id="online-message" class="message" role="alert" aria-live="polite"></p>
+        <div class="list" id="online-list"></div>
+      </section>
+
       <section class="panel" id="panel-games" aria-label="My games" hidden>
         <div class="panel-head">
           <div class="panel-title">
@@ -507,5 +581,7 @@
   <script type="module" src="../notifications/notifications-panel.js"></script>
   <script type="module" src="../recommended/recommended.js"></script>
   <script type="module" src="../rate-players/rate-players.js"></script>
+  <script type="module" src="../social/friends-panel.js"></script>
+  <script type="module" src="../social/online-panel.js"></script>
 </body>
 </html>

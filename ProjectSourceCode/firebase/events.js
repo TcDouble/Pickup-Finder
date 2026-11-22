@@ -372,8 +372,12 @@ async function readOpenEvent(tx, ref) {
   return data;
 }
 
-// Firestore data -> the plain object the front end gets.
-function toEvent(id, data) {
+/**
+ * A game's Firestore data -> the plain object the front end gets (times as
+ * Dates, plus playerCount, spotsLeft, isFull, isGoing, isHost). friends.js
+ * uses it for friends' games.
+ */
+export function toEvent(id, data) {
   const uid = auth.currentUser?.uid;
   const ids = data.participantIds ?? [];
   return {

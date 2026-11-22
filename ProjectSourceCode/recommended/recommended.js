@@ -9,7 +9,7 @@
 
 import { auth, db } from "../firebase/firebase-config.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { SPORTS, friendlyEventError, getEvent, rsvpToEvent } from "../firebase/events.js";
+import { SPORTS, friendlyEventError, getEvent } from "../firebase/events.js";
 import { recommendGames } from "../firebase/matchmaking.js";
 import { getSportsmanship } from "../firebase/sportsmanship.js";
 import {
@@ -24,6 +24,7 @@ import {
   plural,
   scoreSummary,
 } from "../assets/panel-helpers.js";
+import { joinButton } from "../assets/join-button.js";
 
 const MAX_GAMES = 50; // games to look through, as in listEvents
 
@@ -171,49 +172,11 @@ function gameCard(game, score) {
       details,
       game.averageScore != null ? el("span", { class: "match-note" }, matchNote(game.averageScore, score)) : null,
     ),
-    joinButton(game, (joined) => {
-      details.textContent = detailsLine({ ...joined, distanceKm: game.distanceKm });
+    joinButton(game, {
+      onJoined: (joined) => {
+        details.textContent = detailsLine({ ...joined, distanceKm: game.distanceKm });
+      },
+      showMessage,
     }),
   );
-}
-
-function stateTag(text) {
-  return el("span", { class: "card-state" }, text);
-}
-
-// onJoined(game) gets the game as it is after joining, to update the card.
-function joinButton(game, onJoined) {
-  if (game.status === "cancelled") return stateTag("Cancelled");
-  if (game.startTime <= new Date()) return stateTag("Started");
-  if (game.isGoing) return stateTag("Joined");
-  if (game.isFull) return stateTag("Full");
-
-  const button = el(
-    "button",
-    {
-      type: "button",
-      class: "btn primary",
-      "aria-label": `Join ${gameName(game)}, ${formatDayTime(game.startTime)}`,
-    },
-    "Join",
-  );
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    button.textContent = "Joining…";
-    showMessage("");
-    try {
-      onJoined(await rsvpToEvent(game.id));
-      button.replaceWith(stateTag("Joined"));
-      showMessage(
-        `You're in: ${gameName(game)} at ${game.location?.name ?? "the game"}, ${formatDayTime(game.startTime)}.`,
-        true,
-      );
-    } catch (err) {
-      console.error(`Cannot join game ${game.id}:`, err);
-      button.disabled = false;
-      button.textContent = "Join";
-      showMessage(friendlyEventError(err));
-    }
-  });
-  return button;
 }
