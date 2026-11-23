@@ -6,7 +6,8 @@ import { DEFAULT_PHOTO, SPORT_NAMES, friendlyError, hasProfile } from "./auth-he
 import { photoError } from "./validateRegistration.js";
 import { MAX_BIO } from "./validateProfile.js";
 import { countGamesHosted, deleteAccount, getProfile, saveProfile, sendPasswordReset } from "./profile.js";
-import { changeEmail, changePassword, saveSettings, setCityPrivacy } from "./settings.js";
+import { changeEmail, changePassword, getSettings, saveSettings, setCityPrivacy } from "./settings.js";
+import { DEFAULT_SETTINGS } from "./validateSettings.js";
 import { getShowOnline, setShowOnline } from "../firebase/presence.js";
 import { loadMySettings, settingsChanged } from "../assets/my-settings.js";
 import { geocode } from "../assets/geocode.js";
@@ -401,19 +402,43 @@ function fillSettings() {
   $("set-large-text").checked = large;
 }
 
+// Each part loads on its own, so one failure doesn't blank the whole screen.
 async function openSettings() {
   showProfileView("settings");
   showMessage("settings-message", "");
   Object.values(settingsForms).forEach((form) => form.reset());
+  const problems = [];
+
   try {
-    const [loaded, online] = await Promise.all([loadMySettings(), getShowOnline()]);
-    settings = loaded;
-    $("set-online").checked = online;
-    fillSettings();
+    settings = await getSettings({ db }, auth.currentUser.uid);
   } catch (err) {
     console.error("Cannot load settings:", err);
-    showMessage("settings-message", "We couldn't load your settings. Please try again.");
+    settings = { ...DEFAULT_SETTINGS };
+    problems.push(settingsErrorText(err));
   }
+  fillSettings();
+
+  const online = $("set-online");
+  try {
+    online.checked = await getShowOnline();
+    online.disabled = false;
+  } catch (err) {
+    console.error("Cannot load online status:", err);
+    online.disabled = true;
+    problems.push("Couldn't load your online status.");
+  }
+
+  if (problems.length) showMessage("settings-message", problems.join(" "));
+}
+
+// Firestore's "permission-denied" here almost always means the live rules
+// don't have the settings collection yet.
+function settingsErrorText(err) {
+  if (err.code === "settings/invalid") return err.message;
+  if (err.code === "permission-denied") {
+    return "Settings can't be saved yet: the database rules need updating. Please tell the team.";
+  }
+  return friendlyError(err.code);
 }
 
 // Save some settings and say so; on failure, put the screen back as it was.
@@ -424,7 +449,7 @@ async function saveAndShow(changes, done = "Saved.") {
     showMessage("settings-message", done, true);
   } catch (err) {
     console.error("Cannot save settings:", err);
-    showMessage("settings-message", err.code === "settings/invalid" ? err.message : friendlyError(err.code));
+    showMessage("settings-message", settingsErrorText(err));
     if (settings) fillSettings();
   }
 }
@@ -482,7 +507,7 @@ $("set-online").addEventListener("change", async (e) => {
   } catch (err) {
     console.error(err);
     e.target.checked = !e.target.checked;
-    showMessage("settings-message", friendlyError(err.code));
+    showMessage("settings-message", settingsErrorText(err));
   }
 });
 
@@ -494,7 +519,7 @@ $("set-show-city").addEventListener("change", async (e) => {
   } catch (err) {
     console.error(err);
     e.target.checked = !e.target.checked;
-    showMessage("settings-message", friendlyError(err.code));
+    showMessage("settings-message", settingsErrorText(err));
   }
 });
 
