@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { addShellScript, isPageFile, mapsConfigSource, patchFirebaseConfig } from "../scripts/build-web.js";
+import { PAGE_DIRS, addShellScript, isPageFile, mapsConfigSource, patchFirebaseConfig } from "../scripts/build-web.js";
 
 test("copies the files pages load, not tests, packages, rules or keys", () => {
   assert.equal(isPageFile("login-and-registration/home.html"), true);
@@ -16,6 +16,15 @@ test("copies the files pages load, not tests, packages, rules or keys", () => {
   assert.equal(isPageFile("login-and-registration/MAPS_SETUP.md"), false);
   assert.equal(isPageFile("login-and-registration/maps-config.local.js"), false);
   assert.equal(isPageFile("assets/.DS_Store"), false);
+});
+
+// index.js isn't imported here: it needs express, which only the website installs.
+test("copies the same page folders the website's server serves", () => {
+  const server = readFileSync(new URL("../../index.js", import.meta.url), "utf8");
+  const list = server.match(/const PUBLIC_DIRS = \[([^\]]*)\]/);
+  assert.ok(list, "index.js has no PUBLIC_DIRS list");
+  const served = [...list[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual([...PAGE_DIRS].sort(), served.sort());
 });
 
 test("loads the app shell script once, before the page's own scripts", () => {

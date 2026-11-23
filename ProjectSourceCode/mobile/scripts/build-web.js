@@ -19,10 +19,12 @@ const MOBILE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 const SITE_DIR = path.resolve(MOBILE_DIR, "..");
 const OUT_DIR = path.join(MOBILE_DIR, "www");
 
-// The same folders ProjectSourceCode/index.js serves to browsers.
+// The same folders ProjectSourceCode/index.js serves to browsers
+// (test/build-web.test.js checks that the two lists match).
 export const PAGE_DIRS = [
   "assets",
   "create-game",
+  "edit-game",
   "firebase",
   "login-and-registration",
   "notifications",

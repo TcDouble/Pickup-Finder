@@ -1,6 +1,6 @@
 import { auth, db, storage } from "../firebase/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { watchEvents, listMyEvents } from "../firebase/events.js";
+import { watchEvents, listMyEvents, friendlyEventError } from "../firebase/events.js";
 import { getPlayerStats } from "../firebase/sportsmanship.js";
 import { DEFAULT_PHOTO, SPORT_NAMES, friendlyError, hasProfile } from "./auth-helpers.js";
 import { photoError } from "./validateRegistration.js";
@@ -657,8 +657,15 @@ trackButton.addEventListener("click", () => {
 const tabs = document.querySelectorAll("#panel-games .tabs button");
 const myGamesList = $("my-games-list");
 const myGamesMessage = $("my-games-message");
+// Only the latest load may draw, so switching tabs quickly can't mix two lists.
+let myGamesLoad = 0;
 
 async function loadMyGames(view = "joined") {
+  const loadId = ++myGamesLoad;
+  // Opening the panel loads Joined, so highlight the tab being shown.
+  tabs.forEach((t) =>
+    t.setAttribute("aria-pressed", String(t.textContent.trim().toLowerCase() === view))
+  );
   myGamesList.replaceChildren();
   myGamesMessage.textContent = "Loading games...";
 
@@ -667,6 +674,7 @@ async function loadMyGames(view = "joined") {
 
   try {
     const events = await listMyEvents({ role, when });
+    if (loadId !== myGamesLoad) return;
 
     myGamesMessage.textContent = "";
 
@@ -726,7 +734,15 @@ async function loadMyGames(view = "joined") {
       details.append(heading, location, time, players);
       card.append(dateBox, details);
 
-      if (view === "hosting" && event.isHost) {
+      // Cancelled games stay in the list so players see what happened, but
+      // they can't be edited anymore.
+      if (event.status === "cancelled") {
+        card.classList.add("dashed");
+        const state = document.createElement("span");
+        state.className = "card-state";
+        state.textContent = "Cancelled";
+        card.append(state);
+      } else if (view === "hosting" && event.isHost) {
         const editButton = document.createElement("button");
         editButton.type = "button";
         editButton.className = "btn";
@@ -743,17 +759,14 @@ async function loadMyGames(view = "joined") {
       myGamesList.append(card);
     });
   } catch (error) {
+    if (loadId !== myGamesLoad) return;
     console.error("Unable to load games:", error);
-    myGamesMessage.textContent = friendlyError(error.code);
+    myGamesMessage.textContent = friendlyEventError(error);
   }
 }
 
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
-    tabs.forEach((t) =>
-      t.setAttribute("aria-pressed", String(t === tab))
-    );
-
     const view = tab.textContent.trim().toLowerCase();
     loadMyGames(view);
   });
