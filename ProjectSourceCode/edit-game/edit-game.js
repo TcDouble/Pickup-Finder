@@ -23,6 +23,15 @@ function showMessage(text, ok = false) {
   message.classList.toggle("ok", ok);
 }
 
+// Explain why this game can't be edited. The message and the Back link are
+// inside the form, so hide the rest of the form instead of all of it.
+function showLoadProblem(text) {
+  showMessage(text);
+  for (const child of form.children) {
+    child.hidden = child !== message && !child.classList.contains("alt");
+  }
+}
+
 function setCoords(value, label = "Location set") {
   coords = value;
   coordsText.classList.toggle("set", !!value);
@@ -138,22 +147,25 @@ async function loadGame() {
     gameId = params.get("game");
 
     if (!gameId) {
-      showMessage("No game was selected.");
-      form.hidden = true;
+      showLoadProblem("No game was selected.");
       return;
     }
 
     const event = await getEvent(gameId);
 
     if (!event) {
-      showMessage("This game could not be found.");
-      form.hidden = true;
+      showLoadProblem("This game could not be found.");
       return;
     }
 
     if (!event.isHost) {
-      showMessage("Only the person hosting this game can edit it.");
-      form.hidden = true;
+      showLoadProblem("Only the person hosting this game can edit it.");
+      return;
+    }
+
+    // events.js refuses to change a cancelled game, so say so before they type.
+    if (event.status === "cancelled") {
+      showLoadProblem("This game was cancelled, so it can't be edited.");
       return;
     }
 
@@ -186,8 +198,7 @@ async function loadGame() {
     showMessage("");
   } catch (error) {
     console.error("Unable to load game:", error);
-    showMessage(friendlyEventError(error));
-    form.hidden = true;
+    showLoadProblem(friendlyEventError(error));
   }
 }
 
