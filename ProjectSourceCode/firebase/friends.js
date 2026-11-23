@@ -96,6 +96,12 @@ export async function sendFriendRequest(userId) {
       createdAt: serverTimestamp(),
     });
     return "outgoing";
+  }).catch((err) => {
+    // Still refused after the retries: they turned friend requests off in Settings.
+    if (err?.code === "permission-denied") {
+      throw new FriendError("friends/not-accepting", "This player isn't accepting friend requests.");
+    }
+    throw err;
   });
 }
 

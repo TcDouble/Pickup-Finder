@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="../assets/theme.js"></script>
   <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
@@ -484,13 +485,135 @@
 
           <div class="row push-down">
             <button type="button" class="btn big dark" id="edit-profile-btn">Edit profile</button>
-            <button type="button" class="btn big">Settings</button>
+            <button type="button" class="btn big" id="settings-btn">Settings</button>
           </div>
-          <div class="row">
-            <button type="button" class="btn" id="reset-password-btn">Reset password</button>
-            <button type="button" class="btn" id="logout-btn">Log out</button>
-          </div>
-          <button type="button" class="link-btn danger" id="delete-account-btn">Delete account</button>
+          <button type="button" class="btn" id="logout-btn">Log out</button>
+        </div>
+
+        <div class="panel-body" id="settings-view" hidden>
+          <button type="button" class="link-btn" id="settings-back">&larr; Back to profile</button>
+          <h2>Settings</h2>
+          <p id="settings-message" class="message" role="status" aria-live="polite"></p>
+
+          <section class="settings-section" aria-labelledby="settings-account">
+            <h3 id="settings-account">Account</h3>
+            <p class="muted">Signed in as <strong id="settings-email"></strong></p>
+
+            <details class="settings-details">
+              <summary>Change email</summary>
+              <form id="email-form" class="settings-form" novalidate>
+                <div class="field">
+                  <label for="new-email">New email</label>
+                  <input id="new-email" type="email" autocomplete="email">
+                </div>
+                <div class="field">
+                  <label for="email-current">Current password</label>
+                  <input id="email-current" type="password" autocomplete="current-password">
+                </div>
+                <p id="email-message" class="message" role="alert" aria-live="polite"></p>
+                <button type="submit" class="btn" id="email-btn">Send confirmation link</button>
+              </form>
+            </details>
+
+            <details class="settings-details">
+              <summary>Change password</summary>
+              <form id="password-form" class="settings-form" novalidate>
+                <div class="field">
+                  <label for="password-current">Current password</label>
+                  <input id="password-current" type="password" autocomplete="current-password">
+                </div>
+                <div class="field">
+                  <label for="password-new">New password</label>
+                  <input id="password-new" type="password" autocomplete="new-password">
+                  <span class="hint">At least 8 characters.</span>
+                </div>
+                <div class="field">
+                  <label for="password-confirm">Confirm new password</label>
+                  <input id="password-confirm" type="password" autocomplete="new-password">
+                </div>
+                <p id="password-message" class="message" role="alert" aria-live="polite"></p>
+                <button type="submit" class="btn" id="password-btn">Change password</button>
+              </form>
+            </details>
+
+            <div class="row">
+              <button type="button" class="btn" id="reset-password-btn">Email me a reset link</button>
+            </div>
+            <button type="button" class="link-btn danger" id="delete-account-btn">Delete account</button>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-privacy">
+            <h3 id="settings-privacy">Privacy</h3>
+            <label class="switch-row">
+              <span>Show me as online</span>
+              <input type="checkbox" id="set-online">
+            </label>
+            <label class="switch-row">
+              <span>Show my city on my profile <span class="hint">When off, only you can see it.</span></span>
+              <input type="checkbox" id="set-show-city">
+            </label>
+            <div class="field">
+              <label for="set-friend-requests">Friend requests from</label>
+              <select id="set-friend-requests">
+                <option value="everyone">Everyone</option>
+                <option value="nobody">Nobody</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-map">
+            <h3 id="settings-map">Map</h3>
+            <div class="field">
+              <label for="home-area">Home area</label>
+              <input id="home-area" type="text" maxlength="100" placeholder="e.g. Boulder, CO">
+              <div class="locate">
+                <button type="button" class="btn small" id="home-find">Find</button>
+                <button type="button" class="btn small" id="home-here">Use my current location</button>
+                <button type="button" class="link-btn" id="home-clear">Clear</button>
+              </div>
+              <span class="hint" id="home-status"></span>
+            </div>
+            <fieldset>
+              <legend>Distance in</legend>
+              <div class="chips">
+                <label class="chip"><input type="radio" name="units" value="mi"> Miles</label>
+                <label class="chip"><input type="radio" name="units" value="km"> Kilometers</label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Start the map on these sports</legend>
+              <div class="chips" id="start-sports">
+                <label class="chip"><input type="checkbox" name="start-sports" value="basketball"> Basketball</label>
+                <label class="chip"><input type="checkbox" name="start-sports" value="soccer"> Soccer</label>
+                <label class="chip"><input type="checkbox" name="start-sports" value="volleyball"> Volleyball</label>
+                <label class="chip"><input type="checkbox" name="start-sports" value="tennis"> Tennis</label>
+                <label class="chip"><input type="checkbox" name="start-sports" value="pickleball"> Pickleball</label>
+                <label class="chip"><input type="checkbox" name="start-sports" value="football"> Football</label>
+              </div>
+              <span class="hint">None picked shows every sport.</span>
+            </fieldset>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-appearance">
+            <h3 id="settings-appearance">Appearance</h3>
+            <fieldset>
+              <legend>Theme</legend>
+              <div class="chips">
+                <label class="chip"><input type="radio" name="theme" value="system"> System</label>
+                <label class="chip"><input type="radio" name="theme" value="light"> Light</label>
+                <label class="chip"><input type="radio" name="theme" value="dark"> Dark</label>
+              </div>
+            </fieldset>
+            <label class="switch-row">
+              <span>Larger text</span>
+              <input type="checkbox" id="set-large-text">
+            </label>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-notifications">
+            <h3 id="settings-notifications">Notifications</h3>
+            <button type="button" class="link-btn" id="open-notification-settings">Notification settings &rarr;</button>
+          </section>
         </div>
 
         <form class="panel-body" id="profile-form" novalidate hidden>

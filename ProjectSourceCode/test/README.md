@@ -20,6 +20,7 @@ requirement maps onto our app.
 | Profile panel (not in the lab) | `validateProfile()` on its own; `saveProfile()`, `countGamesHosted()`, `sendPasswordReset()` and `deleteAccount()` on the emulators | `profile-validation.spec.js`, `profile.spec.js` |
 | Friends and Online now panels (not in the lab) | The plain helpers in `firebase/social-helpers.js` and the panel text helpers on their own; `firebase/friends.js` and `firebase/presence.js` themselves are tested on the emulators in `firebase/tests/` | `social-helpers.spec.js` |
 | Security rules for profiles | Every check in the `users` rule: owner-only writes and deletes, field types and lengths, unknown fields | `profile-rules.spec.js` |
+| Settings (not in the lab) | `validateSettings()` on its own; `saveSettings()`, city privacy, `changePassword()` and `changeEmail()` on the emulators; the `settings` rule and the friend-request check | `settings-validation.spec.js`, `settings.spec.js`, `settings-rules.spec.js` |
 | Security rules for profile pictures | Every rule in `firebase/storage.rules`, tried as the owner, another user, and a signed-out visitor | `storage-rules.spec.js` |
 | Extra credit: positive and negative test for another feature | `createEvent()` (hosting a game): valid game, invalid player limit, signed-out visitor | `events.spec.js` |
 | `GET /welcome` test | `GET /welcome` on `index.js`, the small web server that serves the pages on Render, plus its other routes and the Maps key | `server.spec.js` |

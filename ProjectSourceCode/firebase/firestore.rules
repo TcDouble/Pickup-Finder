@@ -369,6 +369,17 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(uid);
     }
 
+    function settingsDoc(uid) {
+      return /databases/$(database)/documents/settings/$(uid);
+    }
+
+    // Players can turn friend requests off in Settings. The setting is
+    // private, but rules can still read it here.
+    function acceptsFriendRequests(uid) {
+      return !exists(settingsDoc(uid))
+        || get(settingsDoc(uid)).data.get('friendRequests', 'everyone') == 'everyone';
+    }
+
     match /friendships/{pairId} {
 
       function friendshipFields() {
@@ -388,7 +399,8 @@ service cloud.firestore {
           && pairId == f.userIds[0] + '_' + f.userIds[1]
           && f.status == 'pending'
           && f.createdAt == request.time
-          && exists(userDoc(them));
+          && exists(userDoc(them))
+          && acceptsFriendRequests(them);
       }
 
       // Only the player who was asked can accept, and accepting is the only
@@ -447,6 +459,39 @@ service cloud.firestore {
         && exists(userDoc(userId));
 
       allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    // ------------------------------------------------------------------
+    // settings/{uid}: the Profile panel's Settings. Only its owner can read
+    // or change it, so it also holds the city while "Show my city" is off.
+    // Keep in sync with validateSettings.js.
+    // ------------------------------------------------------------------
+    match /settings/{userId} {
+      function validHomeArea(a) {
+        return a == null || (a is map
+          && a.keys().hasAll(['label', 'lat', 'lng'])
+          && a.keys().hasOnly(['label', 'lat', 'lng'])
+          && a.label is string && a.label.size() <= 100
+          && a.lat is number && a.lat >= -90 && a.lat <= 90
+          && a.lng is number && a.lng >= -180 && a.lng <= 180);
+      }
+
+      function validSettings(s) {
+        return s.keys().hasOnly(['showCity', 'privateCity', 'homeArea', 'units',
+                                 'startSports', 'friendRequests', 'updatedAt'])
+          && (!('showCity' in s) || s.showCity is bool)
+          && (!('privateCity' in s) || (s.privateCity is string && s.privateCity.size() <= 60))
+          && (!('homeArea' in s) || validHomeArea(s.homeArea))
+          && (!('units' in s) || s.units in ['mi', 'km'])
+          && (!('startSports' in s) || (s.startSports is list && s.startSports.hasOnly(sports())))
+          && (!('friendRequests' in s) || s.friendRequests in ['everyone', 'nobody'])
+          && s.updatedAt == request.time;
+      }
+
+      allow read, delete: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && validSettings(request.resource.data);
     }
   }
 }

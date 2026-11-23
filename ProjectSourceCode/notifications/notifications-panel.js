@@ -21,13 +21,15 @@ import {
 } from "../firebase/notifications.js";
 import {
   el,
-  kmToMiles,
-  milesToKm,
+  fromKm,
   notificationTarget,
   plural,
+  relabelDistances,
   showPanel,
   timeAgo,
+  toKm,
 } from "../assets/panel-helpers.js";
+import { loadMySettings } from "../assets/my-settings.js";
 
 const INBOX_SIZE = 30;
 
@@ -73,6 +75,7 @@ const fields = {
 let items = [];
 let settingsLoaded = false;
 let alertCenter = null; // { lat, lng } that match alerts measure distance from
+let units = "mi"; // "mi" or "km", from Settings
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -194,6 +197,8 @@ async function loadSettings() {
   fields.save.disabled = true;
   showFormMessage("");
   try {
+    units = (await loadMySettings()).units;
+    relabelDistances(fields.distance, units);
     fillForm(await getNotificationSettings());
     settingsLoaded = true;
     fields.save.disabled = false;
@@ -222,8 +227,8 @@ function fillForm(settings) {
   selectValue(fields.score, String(alerts.minScore), `${alerts.minScore} or higher`);
   if (alerts.near) {
     alertCenter = { lat: alerts.near.lat, lng: alerts.near.lng };
-    const miles = kmToMiles(alerts.near.radiusKm);
-    selectValue(fields.distance, String(miles), `Within ${miles} mi`);
+    const distance = fromKm(alerts.near.radiusKm, units);
+    selectValue(fields.distance, String(distance), `Within ${distance} ${units}`);
   } else {
     alertCenter = null;
     fields.distance.value = "";
@@ -292,8 +297,8 @@ form.addEventListener("submit", async (event) => {
   if (!settingsLoaded) return;
   showFormMessage("");
 
-  const miles = fields.distance.value ? Number(fields.distance.value) : null;
-  if (miles && !alertCenter) {
+  const distance = fields.distance.value ? Number(fields.distance.value) : null;
+  if (distance && !alertCenter) {
     showFormMessage('Press "Use my location" so we know where to look for games, or choose Anywhere.');
     return;
   }
@@ -313,7 +318,7 @@ form.addEventListener("submit", async (event) => {
       matchAlerts: {
         sportIds: [...fields.sports].filter((box) => box.checked).map((box) => box.value),
         skillLevel: fields.skill.value,
-        near: miles ? { ...alertCenter, radiusKm: milesToKm(miles) } : null,
+        near: distance ? { ...alertCenter, radiusKm: toKm(distance, units) } : null,
         minScore: Number(fields.score.value),
       },
     });

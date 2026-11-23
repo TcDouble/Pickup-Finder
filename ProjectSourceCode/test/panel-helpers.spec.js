@@ -3,6 +3,8 @@
 // involved: these are the functions in panel-helpers.js that don't touch the page.
 import { expect } from "chai";
 import {
+  formatDistance,
+  fromKm,
   gameName,
   initials,
   kmToMiles,
@@ -13,6 +15,7 @@ import {
   rateableGames,
   scoreSummary,
   timeAgo,
+  toKm,
 } from "../assets/panel-helpers.js";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -94,6 +97,19 @@ describe("panel helpers (unit)", () => {
     it("stays inside the 1 to 100 km the back end allows", () => {
       expect(milesToKm(1)).to.be.at.least(1);
       expect(milesToKm(50)).to.be.at.most(100);
+    });
+
+    it("follows the unit picked in Settings", () => {
+      expect(toKm(5, "mi")).to.equal(milesToKm(5));
+      expect(toKm(5, "km")).to.equal(5);
+      expect(fromKm(8.05, "km")).to.equal(8.1);
+      expect(fromKm(milesToKm(3), "mi")).to.equal(3);
+      expect(formatDistance(3.4, "km")).to.equal("3.4 km");
+      expect(formatDistance(milesToKm(2), "mi")).to.equal("2 mi");
+    });
+
+    it("uses miles when no unit is given", () => {
+      expect(formatDistance(milesToKm(1))).to.equal("1 mi");
     });
   });
 

@@ -16,14 +16,16 @@ import {
   dateBox,
   el,
   formatDayTime,
+  formatDistance,
   gameName,
-  kmToMiles,
   matchNote,
-  milesToKm,
   onPanelOpen,
   plural,
+  relabelDistances,
   scoreSummary,
+  toKm,
 } from "../assets/panel-helpers.js";
+import { loadMySettings } from "../assets/my-settings.js";
 import { joinButton } from "../assets/join-button.js";
 
 const MAX_GAMES = 50; // games to look through, as in listEvents
@@ -38,6 +40,7 @@ const list = document.getElementById("rec-list");
 
 let mySports = []; // from the player's profile, for "Sports I play"
 let myLocation = null; // { lat, lng }, asked for only when a distance is picked
+let units = "mi"; // "mi" or "km", from Settings
 let focusGameId = null; // the game from a match alert, shown first
 let loadId = 0;
 
@@ -96,7 +99,7 @@ function currentFilters() {
   if (sportSelect.value === "mine") filters.sportId = mySports;
   else if (sportSelect.value) filters.sportId = sportSelect.value;
   if (distanceSelect.value && myLocation) {
-    filters.near = { ...myLocation, radiusKm: milesToKm(Number(distanceSelect.value)) };
+    filters.near = { ...myLocation, radiusKm: toKm(Number(distanceSelect.value), units) };
   }
   return filters;
 }
@@ -106,6 +109,8 @@ async function refresh(note = "") {
   const user = auth.currentUser;
   if (!user) return;
   const id = ++loadId;
+  units = (await loadMySettings()).units;
+  relabelDistances(distanceSelect, units);
   showMessage(note);
   list.replaceChildren(el("p", { class: "muted" }, "Finding games for you…"));
 
@@ -151,7 +156,7 @@ async function refresh(note = "") {
 function detailsLine(game) {
   return [
     `${plural(game.spotsLeft, "spot")} left`,
-    game.distanceKm != null ? `${kmToMiles(game.distanceKm)} mi away` : null,
+    game.distanceKm != null ? `${formatDistance(game.distanceKm, units)} away` : null,
     game.skillLevel === "competitive" ? "Competitive" : "Casual",
   ]
     .filter(Boolean)

@@ -91,7 +91,7 @@ Any signed-in player can read any profile (to show names next to games), so don'
 
 The `users` rule checks every field's type and length (keep the limits in sync with `validateRegistration.js` and `validateProfile.js`), rejects any other field, and lets only the owner create, change, or delete their profile.
 
-Deleting an account (Profile panel → Delete account) cancels the player's upcoming hosted games, removes them from upcoming games they joined, and deletes their `notificationSettings`, friendships and friend requests, picture, profile, `presence`, and login. Past games, feedback, and sportsmanship totals stay, so other players' history doesn't change.
+Deleting an account (Profile panel → Delete account) cancels the player's upcoming hosted games, removes them from upcoming games they joined, and deletes their `notificationSettings`, `settings`, friendships and friend requests, picture, profile, `presence`, and login. Past games, feedback, and sportsmanship totals stay, so other players' history doesn't change.
 
 Passwords are never stored in Firestore. Firebase Authentication keeps them.
 
@@ -187,6 +187,20 @@ Who's online now (GitHub issue #32). While a player has the home page open, it c
 | `lastSeen` | timestamp or null | Set by the server. `null` while hidden. |
 
 Rules: any signed-in player can read it, and you can only write your own, with the server's time, while you have a profile. Details are in [`firebase/README.md`](firebase/README.md#whos-online).
+
+### `settings/{uid}`
+
+The Profile panel's Settings ([`login-and-registration/settings.js`](login-and-registration/settings.js)). Only its owner can read or change it. Every field is optional; missing ones use the defaults in `validateSettings.js`. Theme and larger text are saved in the browser instead (`assets/theme.js`).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `showCity` | bool | Default `true`. When `false`, the city is removed from `users/{uid}` and kept here in `privateCity`, so other players can't read it. |
+| `privateCity` | string | The city while it's hidden. Up to 60 characters. |
+| `homeArea` | map or null | `{label, lat, lng}`: where the home map opens. `null` opens on Boulder. |
+| `units` | string | `mi` (default) or `km`, for distances on every panel. |
+| `startSports` | array | Sport IDs the map's sport filters start on. Empty means every sport. |
+| `friendRequests` | string | `everyone` (default) or `nobody`. The `friendships` rule reads it and refuses requests to players who chose `nobody`. |
+| `updatedAt` | timestamp | Set by the server. |
 
 ## Working with the database
 

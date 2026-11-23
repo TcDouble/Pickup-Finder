@@ -1,5 +1,6 @@
 import { auth } from "../firebase/firebase-config.js";
 import { createEvent, friendlyEventError } from "../firebase/events.js";
+import { geocode } from "../assets/geocode.js";
 
 const form = document.getElementById("game-form");
 const message = document.getElementById("message");
@@ -43,17 +44,6 @@ function showLoginNeeded() {
   message.classList.remove("ok");
   message.innerHTML =
     'You need to be logged in to create a game. <a href="../login-and-registration/login.html">Log in</a>';
-}
-
-// Look up a place's coordinates with OpenStreetMap's free geocoder.
-async function geocode(text) {
-  const url =
-    "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(text);
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) throw new Error("Geocoding failed");
-  const results = await res.json();
-  if (!results.length) return null;
-  return { lat: Number(results[0].lat), lng: Number(results[0].lon) };
 }
 
 async function findPlace() {

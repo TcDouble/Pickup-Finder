@@ -6,6 +6,10 @@ import { DEFAULT_PHOTO, SPORT_NAMES, friendlyError, hasProfile } from "./auth-he
 import { photoError } from "./validateRegistration.js";
 import { MAX_BIO } from "./validateProfile.js";
 import { countGamesHosted, deleteAccount, getProfile, saveProfile, sendPasswordReset } from "./profile.js";
+import { changeEmail, changePassword, saveSettings, setCityPrivacy } from "./settings.js";
+import { getShowOnline, setShowOnline } from "../firebase/presence.js";
+import { loadMySettings, settingsChanged } from "../assets/my-settings.js";
+import { geocode } from "../assets/geocode.js";
 import { setupEventFilters } from "./filters.js";
 import { gameCountText, gameDetails, groupIntoPins, pinLook, pinTitle } from "./map-pins.js";
 import { el } from "../assets/panel-helpers.js";
@@ -37,6 +41,7 @@ onAuthStateChanged(auth, async (user) => {
   // Show the app before waiting for Google Maps.
   document.documentElement.classList.remove("auth-pending");
   openPanelFromLink();
+  loadMySettings().then((mine) => applyStartSports(mine.startSports));
 
   const status = document.querySelector(".game-count");
   const locationButton = document.getElementById("track-location");
@@ -68,7 +73,6 @@ $("logout-btn").addEventListener("click", async () => {
 // Notifications, Recommended, and Rate players are run by the scripts in
 // ../notifications/, ../recommended/, and ../rate-players/, and Friends and
 // Online now by the scripts in ../social/.
-// My games and Profile are still wireframe placeholders.
 const navButtons = document.querySelectorAll(".sidebar [data-panel]");
 const panels = document.querySelectorAll(".panel");
 
@@ -118,6 +122,7 @@ function showMessage(id, text, ok = false) {
 function showProfileView(which) {
   $("profile-view").hidden = which !== "view";
   profileForm.hidden = which !== "edit";
+  $("settings-view").hidden = which !== "settings";
   deleteForm.hidden = which !== "delete";
 }
 
@@ -129,7 +134,7 @@ async function loadProfile() {
   try {
     // Stats are extras: if one fails, still show the profile.
     const [loaded, stats, hosted] = await Promise.all([
-      getProfile({ db }, uid),
+      getProfile({ auth, db }, uid),
       getPlayerStats(uid).catch((err) => console.error(err)),
       countGamesHosted({ db }, uid).catch((err) => console.error(err)),
     ]);
@@ -279,10 +284,10 @@ $("reset-password-btn").addEventListener("click", async () => {
   btn.disabled = true;
   try {
     const email = await sendPasswordReset({ auth });
-    showMessage("profile-message", `We sent a reset link to ${email}.`, true);
+    showMessage("settings-message", `We sent a reset link to ${email}.`, true);
   } catch (err) {
     console.error(err);
-    showMessage("profile-message", friendlyError(err.code));
+    showMessage("settings-message", friendlyError(err.code));
   } finally {
     btn.disabled = false;
   }
@@ -296,7 +301,7 @@ $("delete-account-btn").addEventListener("click", () => {
   showProfileView("delete");
 });
 
-$("cancel-delete-btn").addEventListener("click", () => showProfileView("view"));
+$("cancel-delete-btn").addEventListener("click", () => showProfileView("settings"));
 
 deleteForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -316,6 +321,259 @@ deleteForm.addEventListener("submit", async (e) => {
     btn.disabled = false;
     btn.textContent = "Delete account";
   }
+});
+
+// --- Settings ---
+
+const settingsForms = {
+  email: $("email-form"),
+  password: $("password-form"),
+};
+const startSportBoxes = document.querySelectorAll('input[name="start-sports"]');
+let settings = null;
+
+const authErrorText = (err) =>
+  err.code === "settings/invalid" ? err.message
+  : err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" ? "Incorrect current password."
+  : err.code === "auth/email-already-in-use" ? "That email already has an account."
+  : friendlyError(err.code);
+
+function isDarkTheme() {
+  const theme = document.documentElement.dataset.theme;
+  return theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+}
+
+function readAppearance() {
+  try {
+    return {
+      theme: localStorage.getItem("pickup-theme") ?? "system",
+      large: localStorage.getItem("pickup-text") === "large",
+    };
+  } catch {
+    return { theme: "system", large: false };
+  }
+}
+
+function applyAppearance({ theme, large }) {
+  const root = document.documentElement;
+  if (theme === "light" || theme === "dark") root.dataset.theme = theme;
+  else delete root.dataset.theme;
+  if (large) root.dataset.text = "large";
+  else delete root.dataset.text;
+  try {
+    localStorage.setItem("pickup-theme", theme);
+    localStorage.setItem("pickup-text", large ? "large" : "normal");
+  } catch {
+    // Storage blocked: the choice lasts until the page is reloaded.
+  }
+}
+
+// Start the sidebar's sport chips on the sports picked in Settings (none = all).
+function applyStartSports(sports) {
+  document.querySelectorAll(".filters .chip").forEach((chip) => {
+    const sport = chip.textContent.trim().toLowerCase();
+    chip.setAttribute("aria-pressed", String(sports.includes(sport)));
+  });
+}
+
+function showHomeArea(area) {
+  $("home-status").textContent = area
+    ? `The map opens on ${area.label}.`
+    : "The map opens on Boulder.";
+}
+
+function fillSettings() {
+  $("settings-email").textContent = auth.currentUser?.email ?? "";
+  $("set-show-city").checked = settings.showCity;
+  $("set-friend-requests").value = settings.friendRequests;
+  $("home-area").value = settings.homeArea?.label ?? "";
+  showHomeArea(settings.homeArea);
+  document.querySelectorAll('input[name="units"]').forEach((box) => {
+    box.checked = box.value === settings.units;
+  });
+  startSportBoxes.forEach((box) => {
+    box.checked = settings.startSports.includes(box.value);
+  });
+  const { theme, large } = readAppearance();
+  document.querySelectorAll('input[name="theme"]').forEach((box) => {
+    box.checked = box.value === theme;
+  });
+  $("set-large-text").checked = large;
+}
+
+async function openSettings() {
+  showProfileView("settings");
+  showMessage("settings-message", "");
+  Object.values(settingsForms).forEach((form) => form.reset());
+  try {
+    const [loaded, online] = await Promise.all([loadMySettings(), getShowOnline()]);
+    settings = loaded;
+    $("set-online").checked = online;
+    fillSettings();
+  } catch (err) {
+    console.error("Cannot load settings:", err);
+    showMessage("settings-message", "We couldn't load your settings. Please try again.");
+  }
+}
+
+// Save some settings and say so; on failure, put the screen back as it was.
+async function saveAndShow(changes, done = "Saved.") {
+  try {
+    settings = await saveSettings({ auth, db }, changes);
+    settingsChanged(settings);
+    showMessage("settings-message", done, true);
+  } catch (err) {
+    console.error("Cannot save settings:", err);
+    showMessage("settings-message", err.code === "settings/invalid" ? err.message : friendlyError(err.code));
+    if (settings) fillSettings();
+  }
+}
+
+$("settings-btn").addEventListener("click", openSettings);
+$("settings-back").addEventListener("click", () => loadProfile());
+
+// Account
+settingsForms.email.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("email-btn");
+  btn.disabled = true;
+  showMessage("email-message", "");
+  try {
+    const email = await changeEmail({ auth }, {
+      current: $("email-current").value,
+      newEmail: $("new-email").value,
+    });
+    settingsForms.email.reset();
+    showMessage("email-message", `Check ${email} for a link to confirm the change.`, true);
+  } catch (err) {
+    console.error(err);
+    showMessage("email-message", authErrorText(err));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+settingsForms.password.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("password-btn");
+  btn.disabled = true;
+  showMessage("password-message", "");
+  try {
+    await changePassword({ auth }, {
+      current: $("password-current").value,
+      next: $("password-new").value,
+      confirm: $("password-confirm").value,
+    });
+    settingsForms.password.reset();
+    showMessage("password-message", "Password changed.", true);
+  } catch (err) {
+    console.error(err);
+    showMessage("password-message", authErrorText(err));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// Privacy
+$("set-online").addEventListener("change", async (e) => {
+  try {
+    await setShowOnline(e.target.checked);
+    showMessage("settings-message", e.target.checked ? "Others can see when you're online." : "You're hidden from Online now.", true);
+  } catch (err) {
+    console.error(err);
+    e.target.checked = !e.target.checked;
+    showMessage("settings-message", friendlyError(err.code));
+  }
+});
+
+$("set-show-city").addEventListener("change", async (e) => {
+  try {
+    settings = await setCityPrivacy({ auth, db }, e.target.checked);
+    settingsChanged(settings);
+    showMessage("settings-message", e.target.checked ? "Your city shows on your profile." : "Your city is private now.", true);
+  } catch (err) {
+    console.error(err);
+    e.target.checked = !e.target.checked;
+    showMessage("settings-message", friendlyError(err.code));
+  }
+});
+
+$("set-friend-requests").addEventListener("change", (e) => saveAndShow({ friendRequests: e.target.value }));
+
+// Map
+async function saveHomeArea(area) {
+  await saveAndShow({ homeArea: area }, area ? `The map will open on ${area.label}.` : "The map will open on Boulder.");
+  showHomeArea(settings?.homeArea ?? null);
+}
+
+$("home-find").addEventListener("click", async () => {
+  const label = $("home-area").value.trim();
+  if (!label) return showMessage("settings-message", "Type a place first, like a city or a park.");
+  $("home-status").textContent = "Looking it up…";
+  try {
+    const found = await geocode(label);
+    if (!found) {
+      showHomeArea(settings?.homeArea ?? null);
+      return showMessage("settings-message", "Couldn't find that place. Try adding the city or state.");
+    }
+    await saveHomeArea({ label, ...found });
+  } catch (err) {
+    console.error(err);
+    showHomeArea(settings?.homeArea ?? null);
+    showMessage("settings-message", "The place lookup isn't working right now. Try again soon.");
+  }
+});
+
+$("home-here").addEventListener("click", () => {
+  if (!navigator.geolocation) return showMessage("settings-message", "This browser can't share your location.");
+  $("home-status").textContent = "Finding you…";
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      $("home-area").value = "My location";
+      saveHomeArea({ label: "My location", lat: pos.coords.latitude, lng: pos.coords.longitude });
+    },
+    () => {
+      showHomeArea(settings?.homeArea ?? null);
+      showMessage("settings-message", "Couldn't get your location. Check the browser's location permission.");
+    },
+    { timeout: 10000 },
+  );
+});
+
+$("home-clear").addEventListener("click", () => {
+  $("home-area").value = "";
+  saveHomeArea(null);
+});
+
+document.querySelectorAll('input[name="units"]').forEach((box) => {
+  box.addEventListener("change", () => saveAndShow({ units: box.value }));
+});
+
+startSportBoxes.forEach((box) => {
+  box.addEventListener("change", async () => {
+    const sports = [...startSportBoxes].filter((b) => b.checked).map((b) => b.value);
+    await saveAndShow({ startSports: sports });
+    applyStartSports(settings?.startSports ?? []);
+  });
+});
+
+// Appearance (saved in this browser only)
+document.querySelectorAll('input[name="theme"]').forEach((box) => {
+  box.addEventListener("change", () => {
+    applyAppearance({ ...readAppearance(), theme: box.value });
+    showMessage("settings-message", "Theme changed. The map switches next time it loads.", true);
+  });
+});
+
+$("set-large-text").addEventListener("change", (e) => {
+  applyAppearance({ ...readAppearance(), large: e.target.checked });
+  showMessage("settings-message", "Saved.", true);
+});
+
+// Notifications live in their own panel; open it on its Settings tab.
+$("open-notification-settings").addEventListener("click", () => {
+  showPanel("notifications");
+  document.querySelector('#panel-notifications .tabs button[data-view="settings"]')?.click();
 });
 
 // --- Wireframe behavior only: these change what's shown, nothing else. ---
@@ -417,11 +675,14 @@ async function setupPickupMap() {
   const { Map, InfoWindow } = await google.maps.importLibrary("maps");
   await google.maps.importLibrary("marker");
 
+  // The map opens on the home area from Settings, in the page's theme.
+  const { homeArea } = await loadMySettings();
   map = new Map(document.getElementById("google-map"), {
-    center: BOULDER,
+    center: homeArea ? { lat: homeArea.lat, lng: homeArea.lng } : BOULDER,
     zoom: 13,
     mapId: "DEMO_MAP_ID",
     zoomControl: false,
+    colorScheme: isDarkTheme() ? "DARK" : "LIGHT",
   });
 
   infoWindow = new InfoWindow();

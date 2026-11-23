@@ -45,6 +45,7 @@ describe("profile.js (Profile panel on the Firebase emulators)", () => {
     for (const uid of createdUids.splice(0)) {
       await deleteDocById(testEnv, "users", uid);
       await deleteDocById(testEnv, "notificationSettings", uid);
+      await deleteDocById(testEnv, "settings", uid);
       await deleteAuthUser(uid).catch(() => {});
     }
     for (const id of createdGames.splice(0)) await deleteDocById(testEnv, "events", id);
@@ -236,6 +237,7 @@ describe("profile.js (Profile panel on the Firebase emulators)", () => {
     it("with the right password, deletes the account and cleans up the player's games", async () => {
       const { uid, email } = await signUp("delete", { photo: new Blob([PNG], { type: "image/png" }) });
       await writeDoc(`notificationSettings/${uid}`, { phone: "" });
+      await writeDoc(`settings/${uid}`, { units: "km" });
       const hosted = await seedGame({ hostId: uid, hostName: "Riley", participantIds: [uid, "friend"] });
       const joined = await seedGame({ participantIds: ["someone-else", uid] });
       const past = await seedGame({ participantIds: ["someone-else", uid], startTime: hoursFromNow(-30), endTime: hoursFromNow(-28) });
@@ -245,6 +247,7 @@ describe("profile.js (Profile panel on the Firebase emulators)", () => {
       // Profile, settings, picture and login are gone, and nobody is signed in
       expect(await readDoc(`users/${uid}`)).to.equal(null);
       expect(await readDoc(`notificationSettings/${uid}`)).to.equal(null);
+      expect(await readDoc(`settings/${uid}`)).to.equal(null);
       expect(await storedFile(testEnv, `profilePictures/${uid}/avatar`)).to.equal(null);
       expect(await findAuthUsers(email)).to.have.lengthOf(0);
       expect(site.auth.currentUser).to.equal(null);

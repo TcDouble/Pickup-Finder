@@ -21,9 +21,11 @@ import {
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   ref,
@@ -58,19 +60,29 @@ async function deleteIfExists(fileRef) {
   }
 }
 
+// While "Show my city" is off, the city lives in the owner-only settings/{uid}.
+async function hiddenCity(db, uid) {
+  const snap = await getDoc(doc(db, "settings", uid));
+  const settings = snap.exists() ? snap.data() : {};
+  return settings.showCity === false ? (settings.privateCity ?? "") : null;
+}
+
 /**
  * A player's profile, or null if they have none:
- * { uid, displayName, photoURL, city, sports, sportLevels, bio, createdAt (Date or null) }.
+ * { uid, displayName, photoURL, city, cityHidden, sports, sportLevels, bio, createdAt (Date or null) }.
+ * For the signed-in user's own profile, a hidden city is filled in from their settings.
  */
-export async function getProfile({ db }, uid) {
+export async function getProfile({ auth, db }, uid) {
   const snap = await getDoc(doc(db, "users", uid));
   if (!snap.exists()) return null;
   const data = snap.data();
+  const privateCity = auth?.currentUser?.uid === uid ? await hiddenCity(db, uid) : null;
   return {
     uid,
     displayName: data.displayName ?? "",
     photoURL: data.photoURL ?? null,
-    city: data.city ?? "",
+    city: privateCity ?? data.city ?? "",
+    cityHidden: privateCity !== null,
     sports: data.sports ?? [],
     sportLevels: data.sportLevels ?? {},
     bio: data.bio ?? "",
@@ -110,7 +122,14 @@ export async function saveProfile({ auth, db, storage }, input) {
     await deleteIfExists(photoRef);
     changes.photoURL = null;
   }
-  await updateDoc(doc(db, "users", user.uid), changes);
+  // A hidden city is saved to the owner-only settings, not the public profile.
+  const batch = writeBatch(db);
+  if ((await hiddenCity(db, user.uid)) !== null) {
+    changes.city = deleteField();
+    batch.set(doc(db, "settings", user.uid), { privateCity: value.city, updatedAt: serverTimestamp() }, { merge: true });
+  }
+  batch.update(doc(db, "users", user.uid), changes);
+  await batch.commit();
 
   // Auth rejects a null photoURL, so a removed picture only clears it in Firestore,
   // which is what the pages read.
@@ -118,7 +137,7 @@ export async function saveProfile({ auth, db, storage }, input) {
     user,
     changes.photoURL ? { displayName: value.displayName, photoURL: changes.photoURL } : { displayName: value.displayName },
   );
-  return getProfile({ db }, user.uid);
+  return getProfile({ auth, db }, user.uid);
 }
 
 /** Email the signed-in user a password reset link. Returns the address it went to. */
@@ -132,7 +151,7 @@ export async function sendPasswordReset({ auth }) {
  * Delete the signed-in user's account after checking their password.
  *
  * Cancels upcoming games they host, leaves upcoming games they joined, and
- * deletes their notification settings, friends and friend requests, picture,
+ * deletes their notification settings, settings, friends and friend requests, picture,
  * profile, online status and login, in that order, so a failure part way
  * leaves a login they can retry with. Past games,
  * feedback and sportsmanship totals stay, because other players' history
@@ -162,6 +181,7 @@ export async function deleteAccount({ auth, db, storage }, password) {
   }
 
   await deleteDoc(doc(db, "notificationSettings", uid));
+  await deleteDoc(doc(db, "settings", uid));
   const friendships = await getDocs(
     query(collection(db, "friendships"), where("userIds", "array-contains", uid)),
   );

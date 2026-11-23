@@ -31,6 +31,12 @@ export const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export const milesToKm = (miles) => Math.round(miles * KM_PER_MILE * 10) / 10;
 export const kmToMiles = (km) => Math.round((km / KM_PER_MILE) * 10) / 10;
 
+/** The same, for the unit the player picked in Settings ("mi" or "km"). */
+export const toKm = (value, units = "mi") => (units === "km" ? value : milesToKm(value));
+export const fromKm = (km, units = "mi") => (units === "km" ? Math.round(km * 10) / 10 : kmToMiles(km));
+/** "2.1 mi" or "3.4 km". */
+export const formatDistance = (km, units = "mi") => `${fromKm(km, units)} ${units}`;
+
 /** "Sat, Nov 21, 6:00 PM" in the browser's time zone. */
 export function formatDayTime(date) {
   return date.toLocaleString("en-US", {
@@ -177,6 +183,13 @@ export function el(tag, attrs = {}, ...children) {
   }
   node.append(...children.flat().filter((child) => child != null && child !== false && child !== ""));
   return node;
+}
+
+/** Relabel a "Within N" distance dropdown for the player's unit. Values stay N. */
+export function relabelDistances(select, units = "mi") {
+  for (const option of select.options) {
+    if (option.value) option.textContent = `Within ${option.value} ${units}`;
+  }
 }
 
 /** The black month-and-day box from the game cards. */
